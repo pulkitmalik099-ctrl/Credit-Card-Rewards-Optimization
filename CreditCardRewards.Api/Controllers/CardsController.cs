@@ -1,0 +1,230 @@
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using CreditCardRewards.Api.Models;
+using CreditCardRewards.Data.Context;
+using CreditCardRewards.Data.Models;
+using CreditCardRewards.DataRefresh.Interfaces;
+
+namespace CreditCardRewards.Api.Controllers
+{
+    [ApiController]
+    [Route("api/[controller]")]
+    public class CardsController : ControllerBase
+    {
+        private readonly AppDbContext _context;
+        private readonly ICardOfferRefreshService _cardOfferRefreshService;
+        private readonly ILogger<CardsController> _logger;
+
+        public CardsController(
+            AppDbContext context,
+            ICardOfferRefreshService cardOfferRefreshService,
+            ILogger<CardsController> logger)
+        {
+            _context = context;
+            _cardOfferRefreshService = cardOfferRefreshService;
+            _logger = logger;
+        }
+
+        /// <summary>
+        /// Get all credit cards in the portfolio
+        /// </summary>
+        [HttpGet]
+        public async Task<ActionResult<List<CreditCard>>> GetAllCards()
+        {
+            _logger.LogInformation("Fetching all credit cards");
+            var cards = await _context.CreditCards
+                .Include(c => c.AcceleratedCategories)
+                .Include(c => c.RewardCaps)
+                .Include(c => c.Milestones)
+                .ToListAsync();
+
+            return Ok(cards);
+        }
+
+        /// <summary>
+        /// Get a specific credit card by ID
+        /// </summary>
+        [HttpGet("{id}")]
+        public async Task<ActionResult<CreditCard>> GetCardById(Guid id)
+        {
+            _logger.LogInformation("Fetching card with ID: {CardId}", id);
+            var card = await _context.CreditCards
+                .Include(c => c.AcceleratedCategories)
+                .Include(c => c.RewardCaps)
+                .Include(c => c.Milestones)
+                .Include(c => c.Offers)
+                .FirstOrDefaultAsync(c => c.Id == id);
+
+            if (card == null)
+            {
+                _logger.LogWarning("Card not found with ID: {CardId}", id);
+                return NotFound();
+            }
+
+            return Ok(card);
+        }
+
+        /// <summary>
+        /// Add a new credit card
+        /// </summary>
+        [HttpPost]
+        public async Task<ActionResult<CreditCard>> AddCard([FromBody] CreateCreditCardRequest request)
+        {
+            _logger.LogInformation("Adding new card: {CardName}", request.Name);
+
+            var card = new CreditCard
+            {
+                Id = Guid.NewGuid(),
+                Name = request.Name,
+                Issuer = string.IsNullOrWhiteSpace(request.Issuer) ? "Unknown" : request.Issuer,
+                TotalLimit = request.TotalLimit,
+                CreatedAt = DateTime.UtcNow,
+                LastUpdatedAt = DateTime.UtcNow
+            };
+
+            _context.CreditCards.Add(card);
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Card added successfully with ID: {CardId}", card.Id);
+            return CreatedAtAction(nameof(GetCardById), new { id = card.Id }, card);
+        }
+
+        /// <summary>
+        /// Initial onboarding: enter all cards you own before campaign refresh runs
+        /// </summary>
+        [HttpPost("onboarding")]
+        public async Task<ActionResult<List<CreditCard>>> OnboardCards([FromBody] OnboardCreditCardsRequest request)
+        {
+            _logger.LogInformation("Onboarding {CardCount} credit cards", request.Cards.Count);
+
+            var now = DateTime.UtcNow;
+            var cards = request.Cards.Select(cardRequest => new CreditCard
+            {
+                Id = Guid.NewGuid(),
+                Name = cardRequest.Name,
+                Issuer = string.IsNullOrWhiteSpace(cardRequest.Issuer) ? "Unknown" : cardRequest.Issuer,
+                TotalLimit = cardRequest.TotalLimit,
+                CreatedAt = now,
+                LastUpdatedAt = now
+            }).ToList();
+
+            _context.CreditCards.AddRange(cards);
+            await _context.SaveChangesAsync();
+
+            return Ok(cards);
+        }
+
+        /// <summary>
+        /// Build a card-specific campaign and offer refresh plan
+        /// </summary>
+        [HttpPost("offers/refresh-plan")]
+        public async Task<IActionResult> BuildOfferRefreshPlan([FromBody] List<Guid>? cardIds = null)
+        {
+            _logger.LogInformation("Building offer refresh plan");
+
+            var refreshPlan = await _cardOfferRefreshService.BuildRefreshPlanAsync(cardIds);
+            if (!refreshPlan.Any())
+            {
+                return BadRequest("Add your credit cards first so relevant campaigns and offers can be fetched.");
+            }
+
+            return Ok(refreshPlan);
+        }
+
+        /// <summary>
+        /// Update an existing credit card
+        /// </summary>
+        [HttpPut("{id}")]
+        public async Task<IActionResult> UpdateCard(Guid id, [FromBody] CreditCard updatedCard)
+        {
+            _logger.LogInformation("Updating card with ID: {CardId}", id);
+
+            var card = await _context.CreditCards.FindAsync(id);
+            if (card == null)
+            {
+                _logger.LogWarning("Card not found for update with ID: {CardId}", id);
+                return NotFound();
+            }
+
+            card.Name = updatedCard.Name;
+            card.Issuer = updatedCard.Issuer;
+            card.TotalLimit = updatedCard.TotalLimit;
+            card.JoiningFee = updatedCard.JoiningFee;
+            card.AnnualFee = updatedCard.AnnualFee;
+            card.AnnualFeeWaiverSpendThreshold = updatedCard.AnnualFeeWaiverSpendThreshold;
+            card.BaseRewardRate = updatedCard.BaseRewardRate;
+            card.BaseRewardUnit = updatedCard.BaseRewardUnit;
+            card.BaseRewardPointValue = updatedCard.BaseRewardPointValue;
+            card.TransferPartners = updatedCard.TransferPartners;
+            card.LastUpdatedAt = DateTime.UtcNow;
+
+            _context.CreditCards.Update(card);
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Card updated successfully with ID: {CardId}", id);
+            return Ok(card);
+        }
+
+        /// <summary>
+        /// Delete a credit card
+        /// </summary>
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteCard(Guid id)
+        {
+            _logger.LogInformation("Deleting card with ID: {CardId}", id);
+
+            var card = await _context.CreditCards.FindAsync(id);
+            if (card == null)
+            {
+                _logger.LogWarning("Card not found for deletion with ID: {CardId}", id);
+                return NotFound();
+            }
+
+            _context.CreditCards.Remove(card);
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Card deleted successfully with ID: {CardId}", id);
+            return NoContent();
+        }
+
+        /// <summary>
+        /// Get portfolio summary
+        /// </summary>
+        [HttpGet("portfolio/summary")]
+        public async Task<ActionResult<dynamic>> GetPortfolioSummary()
+        {
+            _logger.LogInformation("Fetching portfolio summary");
+
+            var cards = await _context.CreditCards
+                .Include(c => c.Transactions)
+                .ToListAsync();
+
+            var summary = new
+            {
+                TotalCards = cards.Count,
+                TotalAnnualFees = cards.Sum(c => c.AnnualFee),
+                TotalAnnualSpend = cards.SelectMany(c => c.Transactions)
+                    .Where(t => t.TransactionDate.Year == DateTime.Now.Year)
+                    .Sum(t => t.Amount),
+                TotalRewardsEarned = cards.SelectMany(c => c.Transactions)
+                    .Where(t => t.TransactionDate.Year == DateTime.Now.Year)
+                    .Sum(t => t.RewardValueInRupees),
+                Cards = cards.Select(c => new
+                {
+                    c.Id,
+                    c.Name,
+                    c.Issuer,
+                    c.TotalLimit,
+                    CurrentYearSpend = c.Transactions
+                        .Where(t => t.TransactionDate.Year == DateTime.Now.Year)
+                        .Sum(t => t.Amount),
+                    CurrentYearRewards = c.Transactions
+                        .Where(t => t.TransactionDate.Year == DateTime.Now.Year)
+                        .Sum(t => t.RewardValueInRupees)
+                }).ToList()
+            };
+
+            return Ok(summary);
+        }
+    }
+}

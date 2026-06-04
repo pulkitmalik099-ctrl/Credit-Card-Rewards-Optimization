@@ -1,0 +1,43 @@
+@CreditCardRewards.Api_HostAddress = http://localhost:5044
+
+POST {{CreditCardRewards.Api_HostAddress}}/api/cards/onboarding
+Content-Type: application/json
+
+{
+  "cards": [
+    {
+      "name": "HDFC Infinia",
+      "issuer": "HDFC",
+      "totalLimit": 500000
+    },
+    {
+      "name": "Axis Atlas",
+      "issuer": "Axis Bank",
+      "totalLimit": 300000
+    }
+  ]
+}
+
+###
+
+POST {{CreditCardRewards.Api_HostAddress}}/api/cards/offers/refresh-plan
+Content-Type: application/json
+
+[]
+
+###
+
+POST {{CreditCardRewards.Api_HostAddress}}/api/cards
+Content-Type: application/json
+
+{
+  "name": "HDFC Infinia",
+  "totalLimit": 500000
+}
+
+###
+
+GET {{CreditCardRewards.Api_HostAddress}}/api/cards
+Accept: application/json
+
+###
