@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Credit Card Rewards Optimizer</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main class="app-shell">
+    <section class="intro">
+      <p class="eyebrow">Portfolio setup</p>
+      <h1>Tell me what cards you have.</h1>
+      <p class="lede">Add each credit card and its total limit first. The app will use this portfolio to prepare relevant campaign and offer lookup targets.</p>
+    </section>
+
+    <section class="workspace" aria-label="Credit card onboarding">
+      <form id="cards-form" class="setup-form">
+        <div class="toolbar">
+          <h2>Your cards</h2>
+          <button type="button" id="add-card" class="secondary-button">Add card</button>
+        </div>
+
+        <div id="card-list" class="card-list"></div>
+
+        <div class="actions">
+          <button type="submit" class="primary-button">Save cards and find relevant offers</button>
+          <span id="status" role="status" aria-live="polite"></span>
+        </div>
+      </form>
+
+      <section class="results" aria-label="Offer refresh plan">
+        <div class="toolbar">
+          <h2>Campaign lookup plan</h2>
+          <button type="button" id="refresh-plan" class="secondary-button">Refresh plan</button>
+        </div>
+        <div id="plan-output" class="empty-state">Save your card list to see issuer, merchant, and reward-program searches tailored to your cards.</div>
+      </section>
+    </section>
+  </main>
+
+  <template id="card-row-template">
+    <div class="card-row">
+      <label>
+        <span>Card name</span>
+        <input name="name" type="text" placeholder="HDFC Infinia" required maxlength="100">
+      </label>
+      <label>
+        <span>Issuer</span>
+        <input name="issuer" type="text" placeholder="HDFC" maxlength="50">
+      </label>
+      <label>
+        <span>Total limit</span>
+        <input name="totalLimit" type="number" placeholder="500000" required min="1" step="1">
+      </label>
+      <button type="button" class="icon-button remove-card" aria-label="Remove card">Remove</button>
+    </div>
+  </template>
+
+  <script src="/app.js"></script>
+</body>
+</html>
