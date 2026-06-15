@@ -27,6 +27,10 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     {
         options.UseInMemoryDatabase("CreditCardRewardsDev");
     }
+    else if (builder.Configuration.GetValue<bool>("UseSqlite"))
+    {
+        options.UseSqlite(builder.Configuration.GetConnectionString("SqliteConnection") ?? "Data Source=rewards.db");
+    }
     else
     {
         options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"));
@@ -67,5 +71,15 @@ app.UseHttpsRedirection();
 app.UseCors("AllowAll");
 app.UseAuthorization();
 app.MapControllers();
+
+// Automatically apply migrations at startup for relational databases
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    if (db.Database.IsRelational())
+    {
+        db.Database.Migrate();
+    }
+}
 
 app.Run();
