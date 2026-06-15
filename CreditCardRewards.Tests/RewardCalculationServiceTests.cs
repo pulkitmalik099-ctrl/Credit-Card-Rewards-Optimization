@@ -29,8 +29,8 @@ namespace CreditCardRewards.Tests
                 BaseRewardRate = baseRewardRate,
                 BaseRewardUnit = "Points",
                 BaseRewardPointValue = pointValue,
-                AnnualFee = 5000,
-                AnnualFeeWaiverSpendThreshold = 200000,
+                AnnualFee = 0,
+                AnnualFeeWaiverSpendThreshold = 0,
                 CreatedAt = DateTime.UtcNow,
                 LastUpdatedAt = DateTime.UtcNow
             };
@@ -281,6 +281,31 @@ namespace CreditCardRewards.Tests
             var card2Result = results.First(r => r.CardId == card2.Id);
             var card1Result = results.First(r => r.CardId == card1.Id);
             Assert.True(card2Result.EstimatedValue > card1Result.EstimatedValue);
+        }
+
+        [Fact]
+        public async Task SpendTrackingService_WithAccumulatedSpendAndRewards_CalculatesCorrectSummary()
+        {
+            // Arrange
+            var context = CreateInMemoryContext();
+            var card = CreateTestCard(baseRewardRate: 1m, pointValue: 0.5m);
+            card.AccumulatedSpend = 50000m;
+            card.AccumulatedRewardPoints = 2000m; // 2000 * 0.5 = ₹1000 value
+            card.AnnualFeeWaiverSpendThreshold = 100000m;
+            
+            context.CreditCards.Add(card);
+            await context.SaveChangesAsync();
+
+            var rewardService = new RewardCalculationService(context);
+            var spendService = new SpendTrackingService(context, rewardService);
+
+            // Act
+            var summary = await spendService.GetCardSpendSummaryAsync(card.Id, DateTime.Now.Year, DateTime.Now.Month);
+
+            // Assert
+            Assert.Equal(50000m, summary.CurrentAnnualSpend);
+            Assert.Equal(1000m, summary.TotalRewardValueEarned);
+            Assert.Equal(50000m, summary.AnnualFeeWaiverRemaining);
         }
     }
 }

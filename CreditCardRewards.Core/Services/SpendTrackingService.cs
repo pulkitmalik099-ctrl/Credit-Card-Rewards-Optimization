@@ -50,6 +50,11 @@ namespace CreditCardRewards.Core.Services
                 .Where(t => t.TransactionDate.Year == year)
                 .Sum(t => t.Amount);
 
+            if (year == DateTime.Now.Year)
+            {
+                annualSpend += card.AccumulatedSpend;
+            }
+
             var remainingToWaiver = Math.Max(0, card.AnnualFeeWaiverSpendThreshold - annualSpend);
             var feeWaiverAchieved = remainingToWaiver == 0;
 
@@ -79,6 +84,11 @@ namespace CreditCardRewards.Core.Services
             var totalRewardValue = card.Transactions
                 .Where(t => t.TransactionDate.Year == year)
                 .Sum(t => t.RewardValueInRupees);
+
+            if (year == DateTime.Now.Year)
+            {
+                totalRewardValue += card.AccumulatedRewardPoints * (card.BaseRewardPointValue ?? 0.5m);
+            }
 
             return new CardSpendSummary
             {
@@ -132,7 +142,7 @@ namespace CreditCardRewards.Core.Services
                 TransactionAmount = amount,
                 Merchant = merchant,
                 Category = category,
-                CurrentAnnualSpend = card.Transactions
+                CurrentAnnualSpend = card.AccumulatedSpend + card.Transactions
                     .Where(t => t.TransactionDate.Year == DateTime.Now.Year)
                     .Sum(t => t.Amount)
             };
@@ -174,7 +184,7 @@ namespace CreditCardRewards.Core.Services
             if (card == null)
                 throw new InvalidOperationException($"Card with ID {cardId} not found");
 
-            var annualSpend = card.Transactions
+            var annualSpend = card.AccumulatedSpend + card.Transactions
                 .Where(t => t.TransactionDate.Year == DateTime.Now.Year)
                 .Sum(t => t.Amount);
 

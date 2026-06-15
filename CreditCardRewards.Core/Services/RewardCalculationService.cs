@@ -120,9 +120,7 @@ namespace CreditCardRewards.Core.Services
             }
 
             // 6. Calculate fee waiver contribution
-            var feeWaiverValue = request.CurrentAnnualFeeWaiverProgress > 0
-                ? CalculateFeeWaiverContribution(card, request)
-                : 0;
+            var feeWaiverValue = CalculateFeeWaiverContribution(card, request);
             if (feeWaiverValue > 0)
             {
                 result.FeeWaiverContributed = true;
@@ -162,7 +160,8 @@ namespace CreditCardRewards.Core.Services
                     TransactionAmount = amount,
                     Merchant = merchant,
                     Category = category,
-                    CurrentAnnualSpend = currentSpend
+                    CurrentAnnualSpend = currentSpend,
+                    CurrentAnnualFeeWaiverProgress = currentSpend
                 };
 
                 var result = await CalculateRewardsAsync(request);

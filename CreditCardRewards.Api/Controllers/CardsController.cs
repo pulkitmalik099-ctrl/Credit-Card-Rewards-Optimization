@@ -78,6 +78,11 @@ namespace CreditCardRewards.Api.Controllers
                 Name = request.Name,
                 Issuer = string.IsNullOrWhiteSpace(request.Issuer) ? "Unknown" : request.Issuer,
                 TotalLimit = request.TotalLimit,
+                BaseRewardRate = request.BaseRewardRate ?? 1m,
+                BaseRewardPointValue = request.BaseRewardPointValue ?? 0.5m,
+                BaseRewardUnit = "Points",
+                AccumulatedSpend = request.AccumulatedSpend,
+                AccumulatedRewardPoints = request.AccumulatedRewardPoints,
                 CreatedAt = DateTime.UtcNow,
                 LastUpdatedAt = DateTime.UtcNow
             };
@@ -104,6 +109,11 @@ namespace CreditCardRewards.Api.Controllers
                 Name = cardRequest.Name,
                 Issuer = string.IsNullOrWhiteSpace(cardRequest.Issuer) ? "Unknown" : cardRequest.Issuer,
                 TotalLimit = cardRequest.TotalLimit,
+                BaseRewardRate = cardRequest.BaseRewardRate ?? 1m,
+                BaseRewardPointValue = cardRequest.BaseRewardPointValue ?? 0.5m,
+                BaseRewardUnit = "Points",
+                AccumulatedSpend = cardRequest.AccumulatedSpend,
+                AccumulatedRewardPoints = cardRequest.AccumulatedRewardPoints,
                 CreatedAt = now,
                 LastUpdatedAt = now
             }).ToList();
@@ -156,6 +166,8 @@ namespace CreditCardRewards.Api.Controllers
             card.BaseRewardUnit = updatedCard.BaseRewardUnit;
             card.BaseRewardPointValue = updatedCard.BaseRewardPointValue;
             card.TransferPartners = updatedCard.TransferPartners;
+            card.AccumulatedSpend = updatedCard.AccumulatedSpend;
+            card.AccumulatedRewardPoints = updatedCard.AccumulatedRewardPoints;
             card.LastUpdatedAt = DateTime.UtcNow;
 
             _context.CreditCards.Update(card);
@@ -203,10 +215,10 @@ namespace CreditCardRewards.Api.Controllers
             {
                 TotalCards = cards.Count,
                 TotalAnnualFees = cards.Sum(c => c.AnnualFee),
-                TotalAnnualSpend = cards.SelectMany(c => c.Transactions)
+                TotalAnnualSpend = cards.Sum(c => c.AccumulatedSpend) + cards.SelectMany(c => c.Transactions)
                     .Where(t => t.TransactionDate.Year == DateTime.Now.Year)
                     .Sum(t => t.Amount),
-                TotalRewardsEarned = cards.SelectMany(c => c.Transactions)
+                TotalRewardsEarned = cards.Sum(c => c.AccumulatedRewardPoints * (c.BaseRewardPointValue ?? 0.5m)) + cards.SelectMany(c => c.Transactions)
                     .Where(t => t.TransactionDate.Year == DateTime.Now.Year)
                     .Sum(t => t.RewardValueInRupees),
                 Cards = cards.Select(c => new
@@ -215,10 +227,10 @@ namespace CreditCardRewards.Api.Controllers
                     c.Name,
                     c.Issuer,
                     c.TotalLimit,
-                    CurrentYearSpend = c.Transactions
+                    CurrentYearSpend = c.AccumulatedSpend + c.Transactions
                         .Where(t => t.TransactionDate.Year == DateTime.Now.Year)
                         .Sum(t => t.Amount),
-                    CurrentYearRewards = c.Transactions
+                    CurrentYearRewards = (c.AccumulatedRewardPoints * (c.BaseRewardPointValue ?? 0.5m)) + c.Transactions
                         .Where(t => t.TransactionDate.Year == DateTime.Now.Year)
                         .Sum(t => t.RewardValueInRupees)
                 }).ToList()

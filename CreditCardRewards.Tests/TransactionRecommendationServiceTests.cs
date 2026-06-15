@@ -54,10 +54,10 @@ namespace CreditCardRewards.Tests
                 Amount = 10000,
                 Merchant = "Amazon",
                 Category = "Online Shopping",
-                CardSpends = new List<(Guid, decimal)>
+                CardSpends = new List<CardSpendEntry>
                 {
-                    (card1.Id, 0),
-                    (card2.Id, 0)
+                    new() { CardId = card1.Id, CurrentSpend = 0 },
+                    new() { CardId = card2.Id, CurrentSpend = 0 }
                 }
             };
 
@@ -99,10 +99,10 @@ namespace CreditCardRewards.Tests
                 Amount = 5000,
                 Merchant = "Swiggy",
                 Category = "Dining",
-                CardSpends = new List<(Guid, decimal)>
+                CardSpends = new List<CardSpendEntry>
                 {
-                    (card1.Id, 0),
-                    (card2.Id, 0)
+                    new() { CardId = card1.Id, CurrentSpend = 0 },
+                    new() { CardId = card2.Id, CurrentSpend = 0 }
                 }
             };
 
@@ -146,10 +146,10 @@ namespace CreditCardRewards.Tests
                 Merchant = "Amazon",
                 Category = "Shopping",
                 EnableMilestoneMode = true,
-                CardSpends = new List<(Guid, decimal)>
+                CardSpends = new List<CardSpendEntry>
                 {
-                    (card1.Id, 0),
-                    (card2.Id, 90000m) // Close to milestone
+                    new() { CardId = card1.Id, CurrentSpend = 0 },
+                    new() { CardId = card2.Id, CurrentSpend = 90000m }
                 }
             };
 
@@ -174,7 +174,7 @@ namespace CreditCardRewards.Tests
                 Amount = 10000,
                 Merchant = "Amazon",
                 Category = "Shopping",
-                CardSpends = new List<(Guid, decimal)>()
+                CardSpends = new List<CardSpendEntry>()
             };
 
             // Act & Assert
@@ -214,10 +214,10 @@ namespace CreditCardRewards.Tests
                 Amount = 10000,
                 Merchant = "Amazon",
                 Category = "Shopping",
-                CardSpends = new List<(Guid, decimal)>
+                CardSpends = new List<CardSpendEntry>
                 {
-                    (card1.Id, 0),
-                    (card2.Id, 0)
+                    new() { CardId = card1.Id, CurrentSpend = 0 },
+                    new() { CardId = card2.Id, CurrentSpend = 0 }
                 }
             };
 

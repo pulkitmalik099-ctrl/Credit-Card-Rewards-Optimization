@@ -9,6 +9,6 @@ namespace CreditCardRewards.Core.Dtos
         public string Merchant { get; set; } = null!;
         public string Category { get; set; } = null!;
         public bool EnableMilestoneMode { get; set; } = false;
-        public List<(Guid CardId, decimal CurrentSpend)> CardSpends { get; set; } = new();
+        public List<CardSpendEntry> CardSpends { get; set; } = new();
     }
 }

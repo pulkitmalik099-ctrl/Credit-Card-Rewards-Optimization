@@ -13,5 +13,13 @@ namespace CreditCardRewards.Api.Models
 
         [MaxLength(50)]
         public string? Issuer { get; set; }
+
+        public decimal? BaseRewardRate { get; set; }
+
+        public decimal? BaseRewardPointValue { get; set; }
+
+        public decimal AccumulatedSpend { get; set; } = 0;
+
+        public decimal AccumulatedRewardPoints { get; set; } = 0;
     }
 }

@@ -15,6 +15,8 @@ namespace CreditCardRewards.Data.Models
         public decimal JoiningFee { get; set; } // One-time joining fee
         public decimal AnnualFee { get; set; } // Recurring annual fee
         public decimal AnnualFeeWaiverSpendThreshold { get; set; } // Spend amount to waive annual fee
+        public decimal AccumulatedSpend { get; set; } // Spent amount done on the card prior to onboarding
+        public decimal AccumulatedRewardPoints { get; set; } // Reward points earned on the card prior to onboarding
         
         // Reward structure
         public decimal BaseRewardRate { get; set; } // Base reward rate (e.g., 1% = 1.0)
