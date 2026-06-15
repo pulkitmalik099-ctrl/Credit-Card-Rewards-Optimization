@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Credit Card Rewards Optimizer</title>
-  <link rel="stylesheet" href="/styles.css?v=1.0.4">
+  <link rel="stylesheet" href="/styles.css?v=1.0.5">
 </head>
 <body>
   <main class="app-shell">
@@ -201,20 +201,39 @@
     <div class="modal-container">
       <div class="modal-content">
         <h2>Welcome to Rewards Optimizer</h2>
-        <p class="modal-subtitle">Set up a user profile to organize your credit cards and track milestones.</p>
+        <p class="modal-subtitle">Access your credit card portfolio and track rewards.</p>
         
-        <form id="profile-form" class="profile-form">
+        <!-- Tab Navigation for Login / Register -->
+        <div class="modal-tabs">
+          <button type="button" class="modal-tab-btn is-active" id="btn-login-tab">Sign In</button>
+          <button type="button" class="modal-tab-btn" id="btn-register-tab">Create Profile</button>
+        </div>
+
+        <div id="profile-error" class="profile-error-message" style="display: none;"></div>
+        
+        <!-- Sign In Form (Email Only) -->
+        <form id="login-form" class="profile-form">
           <div class="form-group">
-            <label for="profile-name">Your Name</label>
-            <input type="text" id="profile-name" placeholder="John Doe" required maxlength="100">
+            <label for="login-email">Email Address</label>
+            <input type="email" id="login-email" placeholder="john@example.com" required maxlength="150">
+          </div>
+          <button type="submit" class="primary-button full-width">Sign In</button>
+        </form>
+
+        <!-- Create Profile Form (Name + Email) -->
+        <form id="register-form" class="profile-form" hidden>
+          <div class="form-group">
+            <label for="register-name">Your Name</label>
+            <input type="text" id="register-name" placeholder="John Doe" required maxlength="100">
           </div>
           <div class="form-group">
-            <label for="profile-email">Email Address</label>
-            <input type="email" id="profile-email" placeholder="john@example.com" required maxlength="150">
+            <label for="register-email">Email Address</label>
+            <input type="email" id="register-email" placeholder="john@example.com" required maxlength="150">
           </div>
           <button type="submit" class="primary-button full-width">Create Profile</button>
         </form>
 
+        <!-- Quick Select List -->
         <div id="existing-profiles-section" class="existing-profiles-section" hidden>
           <div class="divider"><span>OR SELECT AN EXISTING PROFILE</span></div>
           <ul id="profile-list" class="profile-list"></ul>
@@ -223,6 +242,6 @@
     </div>
   </div>
 
-  <script src="/app.js?v=1.0.4"></script>
+  <script src="/app.js?v=1.0.5"></script>
 </body>
 </html>

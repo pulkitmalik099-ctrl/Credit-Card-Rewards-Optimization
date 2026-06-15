@@ -11,7 +11,11 @@ let activeUserProfile = null;
 
 // DOM Elements for user profiles
 const profileOverlay = document.querySelector("#profile-overlay");
-const profileForm = document.querySelector("#profile-form");
+const loginForm = document.querySelector("#login-form");
+const registerForm = document.querySelector("#register-form");
+const profileError = document.querySelector("#profile-error");
+const loginTabBtn = document.querySelector("#btn-login-tab");
+const registerTabBtn = document.querySelector("#btn-register-tab");
 const profileList = document.querySelector("#profile-list");
 const existingProfilesSection = document.querySelector("#existing-profiles-section");
 const activeProfileWidget = document.querySelector("#active-profile-widget");
@@ -409,6 +413,7 @@ async function fetchProfile(id) {
 
 async function openProfileModal() {
   profileOverlay.classList.add("is-visible");
+  switchLandingTab("login");
   
   // Load existing profiles
   try {
@@ -586,35 +591,89 @@ switchProfileBtn.addEventListener("click", () => {
   openProfileModal();
 });
 
-profileForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const name = document.querySelector("#profile-name").value.trim();
-  const email = document.querySelector("#profile-email").value.trim();
+// Toggling Login / Register Forms
+function switchLandingTab(tab) {
+  profileError.style.display = "none";
+  profileError.textContent = "";
   
+  if (tab === "login") {
+    loginTabBtn.classList.add("is-active");
+    registerTabBtn.classList.remove("is-active");
+    loginForm.hidden = false;
+    registerForm.hidden = true;
+  } else {
+    loginTabBtn.classList.remove("is-active");
+    registerTabBtn.classList.add("is-active");
+    loginForm.hidden = true;
+    registerForm.hidden = false;
+  }
+}
+
+loginTabBtn.addEventListener("click", () => switchLandingTab("login"));
+registerTabBtn.addEventListener("click", () => switchLandingTab("register"));
+
+// Email Lookup Login Handler
+loginForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const email = document.querySelector("#login-email").value.trim();
+  profileError.style.display = "none";
+  profileError.textContent = "";
+
+  try {
+    const response = await fetch(`/api/users/email/${encodeURIComponent(email)}`);
+    if (!response.ok) {
+      profileError.textContent = "No profile found with this email. Go to the 'Create Profile' tab to sign up.";
+      profileError.style.display = "block";
+      return;
+    }
+
+    activeUserProfile = await response.json();
+    localStorage.setItem("activeUserProfileId", activeUserProfile.id);
+    profileOverlay.classList.remove("is-visible");
+    showProfileWidget(activeUserProfile);
+    
+    document.querySelector("#login-email").value = "";
+    await loadProfileData();
+  } catch (err) {
+    profileError.textContent = "Sign In failed: " + err.message;
+    profileError.style.display = "block";
+  }
+});
+
+// Create Profile Registration Handler
+registerForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const name = document.querySelector("#register-name").value.trim();
+  const email = document.querySelector("#register-email").value.trim();
+  profileError.style.display = "none";
+  profileError.textContent = "";
+
   try {
     const response = await fetch("/api/users", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, email })
     });
-    
+
     if (!response.ok) {
       const msg = await response.text();
-      alert(msg || "Could not create user profile");
+      profileError.textContent = msg || "Could not create user profile.";
+      profileError.style.display = "block";
       return;
     }
-    
+
     activeUserProfile = await response.json();
     localStorage.setItem("activeUserProfileId", activeUserProfile.id);
     profileOverlay.classList.remove("is-visible");
     showProfileWidget(activeUserProfile);
     
-    document.querySelector("#profile-name").value = "";
-    document.querySelector("#profile-email").value = "";
+    document.querySelector("#register-name").value = "";
+    document.querySelector("#register-email").value = "";
     
     await loadProfileData();
   } catch (err) {
-    alert("Error creating profile: " + err.message);
+    profileError.textContent = "Registration failed: " + err.message;
+    profileError.style.display = "block";
   }
 });
 

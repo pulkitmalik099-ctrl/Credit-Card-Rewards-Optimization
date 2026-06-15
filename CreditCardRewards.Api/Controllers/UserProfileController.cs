@@ -78,6 +78,24 @@ namespace CreditCardRewards.Api.Controllers
             _logger.LogInformation("User profile created successfully with ID: {ProfileId}", profile.Id);
             return CreatedAtAction(nameof(GetProfileById), new { id = profile.Id }, profile);
         }
+
+        /// <summary>
+        /// Get a user profile by email address
+        /// </summary>
+        [HttpGet("email/{email}")]
+        public async Task<ActionResult<UserProfile>> GetProfileByEmail(string email)
+        {
+            _logger.LogInformation("Fetching user profile with email: {Email}", email);
+            var profile = await _context.UserProfiles
+                .FirstOrDefaultAsync(p => p.Email.ToLower() == email.Trim().ToLower());
+                
+            if (profile == null)
+            {
+                _logger.LogWarning("User profile not found with email: {Email}", email);
+                return NotFound("No user profile found with this email address.");
+            }
+            return Ok(profile);
+        }
     }
 
     public class CreateUserProfileRequest
