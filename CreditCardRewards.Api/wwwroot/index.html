@@ -8,6 +8,17 @@
 </head>
 <body>
   <main class="app-shell">
+    <div class="top-bar">
+      <div class="brand">💳 RewardsOptimizer</div>
+      <div id="active-profile-widget" class="profile-widget" hidden>
+        <span class="avatar" id="widget-avatar">U</span>
+        <div class="user-details">
+          <span class="name" id="widget-name">Loading...</span>
+          <span class="email" id="widget-email"></span>
+        </div>
+        <button type="button" id="switch-profile-btn" class="switch-btn">Switch Profile</button>
+      </div>
+    </div>
     <header class="app-header">
       <p class="eyebrow">Credit card rewards</p>
       <h1>Maximize every transaction.</h1>
@@ -135,6 +146,33 @@
       <button type="button" class="icon-button remove-card" aria-label="Remove card">Remove</button>
     </div>
   </template>
+
+  <!-- Profile Setup/Switch Modal Overlay -->
+  <div id="profile-overlay" class="modal-overlay">
+    <div class="modal-container">
+      <div class="modal-content">
+        <h2>Welcome to Rewards Optimizer</h2>
+        <p class="modal-subtitle">Set up a user profile to organize your credit cards and track milestones.</p>
+        
+        <form id="profile-form" class="profile-form">
+          <div class="form-group">
+            <label for="profile-name">Your Name</label>
+            <input type="text" id="profile-name" placeholder="John Doe" required maxlength="100">
+          </div>
+          <div class="form-group">
+            <label for="profile-email">Email Address</label>
+            <input type="email" id="profile-email" placeholder="john@example.com" required maxlength="150">
+          </div>
+          <button type="submit" class="primary-button full-width">Create Profile</button>
+        </form>
+
+        <div id="existing-profiles-section" class="existing-profiles-section" hidden>
+          <div class="divider"><span>OR SELECT AN EXISTING PROFILE</span></div>
+          <ul id="profile-list" class="profile-list"></ul>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script src="/app.js"></script>
 </body>

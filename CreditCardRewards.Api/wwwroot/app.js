@@ -7,10 +7,23 @@ const recommendOutput = document.querySelector("#recommend-output");
 const portfolioPanel = document.querySelector("#portfolio-panel");
 const recommendPanel = document.querySelector("#recommend-panel");
 
+let activeUserProfile = null;
+
+// DOM Elements for user profiles
+const profileOverlay = document.querySelector("#profile-overlay");
+const profileForm = document.querySelector("#profile-form");
+const profileList = document.querySelector("#profile-list");
+const existingProfilesSection = document.querySelector("#existing-profiles-section");
+const activeProfileWidget = document.querySelector("#active-profile-widget");
+const widgetName = document.querySelector("#widget-name");
+const widgetEmail = document.querySelector("#widget-email");
+const widgetAvatar = document.querySelector("#widget-avatar");
+const switchProfileBtn = document.querySelector("#switch-profile-btn");
+
 const currencyFormatter = new Intl.NumberFormat("en-IN", {
   style: "currency",
   currency: "INR",
-  maximumFractionDigits: 2
+  maximumFractionDigits: 0
 });
 
 const numberFormatter = new Intl.NumberFormat("en-IN", {
@@ -21,6 +34,7 @@ function addCardRow(values = {}) {
   const fragment = template.content.cloneNode(true);
   const row = fragment.querySelector(".card-row");
 
+  row.dataset.id = values.id ?? "";
   row.querySelector('[name="name"]').value = values.name ?? "";
   row.querySelector('[name="issuer"]').value = values.issuer ?? "";
   row.querySelector('[name="totalLimit"]').value = values.totalLimit ?? "";
@@ -46,13 +60,15 @@ function getCardsFromForm() {
     const accumulatedRewardPoints = row.querySelector('[name="accumulatedRewardPoints"]').value;
 
     return {
+      id: row.dataset.id || null,
       name: row.querySelector('[name="name"]').value.trim(),
       issuer: row.querySelector('[name="issuer"]').value.trim() || null,
       totalLimit: Number(row.querySelector('[name="totalLimit"]').value),
       baseRewardRate: baseRewardRate ? Number(baseRewardRate) : null,
       baseRewardPointValue: baseRewardPointValue ? Number(baseRewardPointValue) : null,
       accumulatedSpend: accumulatedSpend ? Number(accumulatedSpend) : 0,
-      accumulatedRewardPoints: accumulatedRewardPoints ? Number(accumulatedRewardPoints) : 0
+      accumulatedRewardPoints: accumulatedRewardPoints ? Number(accumulatedRewardPoints) : 0,
+      userProfileId: activeUserProfile ? activeUserProfile.id : null
     };
   });
 }
@@ -66,6 +82,7 @@ function setRecommendStatus(message) {
 }
 
 function escapeHtml(value) {
+  if (value === null || value === undefined) return "";
   return String(value)
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
@@ -174,12 +191,17 @@ function switchTab(tabName) {
 }
 
 async function refreshPlan() {
+  if (!activeUserProfile) return;
   setStatus("Building offer refresh plan...");
+
+  const cardIds = [...cardList.querySelectorAll(".card-row")]
+    .map(row => row.dataset.id)
+    .filter(id => id);
 
   const response = await fetch("/api/cards/offers/refresh-plan", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: "[]"
+    body: JSON.stringify(cardIds)
   });
 
   if (!response.ok) {
@@ -192,12 +214,14 @@ async function refreshPlan() {
 }
 
 async function getRecommendations(expense) {
+  if (!activeUserProfile) return;
   setRecommendStatus("Comparing your cards...");
 
   const response = await fetch("/api/recommendations/portfolio", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
+      userProfileId: activeUserProfile.id,
       amount: expense.amount,
       merchant: expense.merchant,
       category: expense.category,
@@ -215,6 +239,113 @@ async function getRecommendations(expense) {
   setRecommendStatus("Comparison complete.");
 }
 
+// User Profile Functions
+async function fetchProfile(id) {
+  const response = await fetch(`/api/users/${id}`);
+  if (!response.ok) throw new Error("Profile not found");
+  return response.json();
+}
+
+async function openProfileModal() {
+  profileOverlay.classList.add("is-visible");
+  
+  // Load existing profiles
+  try {
+    const response = await fetch("/api/users");
+    if (response.ok) {
+      const profiles = await response.json();
+      if (profiles.length > 0) {
+        existingProfilesSection.hidden = false;
+        profileList.innerHTML = profiles.map(p => `
+          <li class="profile-item" data-id="${p.id}">
+            <span class="avatar">${escapeHtml(p.name.charAt(0).toUpperCase())}</span>
+            <div class="profile-item-details">
+              <span class="name">${escapeHtml(p.name)}</span>
+              <span class="email">${escapeHtml(p.email)}</span>
+            </div>
+          </li>
+        `).join("");
+        
+        // Add click listener
+        profileList.querySelectorAll(".profile-item").forEach(item => {
+          item.addEventListener("click", async () => {
+            const id = item.dataset.id;
+            activeUserProfile = await fetchProfile(id);
+            localStorage.setItem("activeUserProfileId", id);
+            profileOverlay.classList.remove("is-visible");
+            showProfileWidget(activeUserProfile);
+            await loadProfileData();
+          });
+        });
+      } else {
+        existingProfilesSection.hidden = true;
+      }
+    }
+  } catch (err) {
+    console.error("Could not fetch user profiles", err);
+  }
+}
+
+function showProfileWidget(profile) {
+  activeProfileWidget.hidden = false;
+  widgetName.textContent = profile.name;
+  widgetEmail.textContent = profile.email;
+  widgetAvatar.textContent = profile.name.charAt(0).toUpperCase();
+}
+
+async function loadProfileData() {
+  cardList.innerHTML = "";
+  setStatus("Loading cards...");
+  
+  try {
+    const response = await fetch(`/api/cards?userProfileId=${activeUserProfile.id}`);
+    if (response.ok) {
+      const cards = await response.json();
+      if (cards.length > 0) {
+        cards.forEach(card => {
+          addCardRow({
+            id: card.id,
+            name: card.name,
+            issuer: card.issuer,
+            totalLimit: card.totalLimit,
+            baseRewardRate: card.baseRewardRate,
+            baseRewardPointValue: card.baseRewardPointValue,
+            accumulatedSpend: card.accumulatedSpend,
+            accumulatedRewardPoints: card.accumulatedRewardPoints
+          });
+        });
+        
+        await refreshPlan();
+      } else {
+        // No cards saved yet. Seed with default suggestions
+        addCardRow({
+          name: "HDFC Infinia",
+          issuer: "HDFC",
+          totalLimit: 500000,
+          baseRewardRate: 3.3,
+          baseRewardPointValue: 1,
+          accumulatedSpend: 0,
+          accumulatedRewardPoints: 0
+        });
+        addCardRow({
+          name: "Amazon Pay ICICI",
+          issuer: "ICICI",
+          totalLimit: 200000,
+          baseRewardRate: 5,
+          baseRewardPointValue: 1,
+          accumulatedSpend: 0,
+          accumulatedRewardPoints: 0
+        });
+        setStatus("Ready to onboarding.");
+      }
+    }
+  } catch (e) {
+    console.error("Error loading cards for profile", e);
+    setStatus("Failed to load cards.");
+  }
+}
+
+// Event Listeners
 document.querySelectorAll(".tab-button").forEach((button) => {
   button.addEventListener("click", () => switchTab(button.dataset.tab));
 });
@@ -231,19 +362,33 @@ document.querySelector("#refresh-plan").addEventListener("click", async () => {
 
 document.querySelector("#cards-form").addEventListener("submit", async (event) => {
   event.preventDefault();
+  if (!activeUserProfile) return;
   setStatus("Saving cards...");
 
   const cards = getCardsFromForm();
   const response = await fetch("/api/cards/onboarding", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ cards })
+    body: JSON.stringify({ 
+      userProfileId: activeUserProfile.id,
+      cards 
+    })
   });
 
   if (!response.ok) {
     setStatus("Could not save cards. Check the entered names and limits.");
     return;
   }
+
+  const savedCards = await response.json();
+  
+  // Update rows with returned database IDs
+  const rows = cardList.querySelectorAll(".card-row");
+  savedCards.forEach((card, index) => {
+    if (rows[index]) {
+      rows[index].dataset.id = card.id;
+    }
+  });
 
   setStatus("Cards saved.");
 
@@ -271,17 +416,56 @@ document.querySelector("#recommend-form").addEventListener("submit", async (even
   }
 });
 
-addCardRow({
-  name: "HDFC Infinia",
-  issuer: "HDFC",
-  totalLimit: 500000,
-  baseRewardRate: 3.3,
-  baseRewardPointValue: 1
+switchProfileBtn.addEventListener("click", () => {
+  openProfileModal();
 });
-addCardRow({
-  name: "Amazon Pay ICICI",
-  issuer: "ICICI",
-  totalLimit: 200000,
-  baseRewardRate: 5,
-  baseRewardPointValue: 1
+
+profileForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const name = document.querySelector("#profile-name").value.trim();
+  const email = document.querySelector("#profile-email").value.trim();
+  
+  try {
+    const response = await fetch("/api/users", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, email })
+    });
+    
+    if (!response.ok) {
+      const msg = await response.text();
+      alert(msg || "Could not create user profile");
+      return;
+    }
+    
+    activeUserProfile = await response.json();
+    localStorage.setItem("activeUserProfileId", activeUserProfile.id);
+    profileOverlay.classList.remove("is-visible");
+    showProfileWidget(activeUserProfile);
+    
+    document.querySelector("#profile-name").value = "";
+    document.querySelector("#profile-email").value = "";
+    
+    await loadProfileData();
+  } catch (err) {
+    alert("Error creating profile: " + err.message);
+  }
+});
+
+// Load Profile on startup
+document.addEventListener("DOMContentLoaded", async () => {
+  const savedProfileId = localStorage.getItem("activeUserProfileId");
+  if (savedProfileId) {
+    try {
+      activeUserProfile = await fetchProfile(savedProfileId);
+      showProfileWidget(activeUserProfile);
+      await loadProfileData();
+    } catch (e) {
+      console.error("Failed to load saved profile, opening login modal", e);
+      localStorage.removeItem("activeUserProfileId");
+      openProfileModal();
+    }
+  } else {
+    openProfileModal();
+  }
 });

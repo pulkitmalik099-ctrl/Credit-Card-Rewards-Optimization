@@ -9,6 +9,7 @@ namespace CreditCardRewards.Data.Context
         {
         }
 
+        public DbSet<UserProfile> UserProfiles { get; set; } = null!;
         public DbSet<CreditCard> CreditCards { get; set; } = null!;
         public DbSet<RewardCategory> RewardCategories { get; set; } = null!;
         public DbSet<RewardCap> RewardCaps { get; set; } = null!;
@@ -52,6 +53,19 @@ namespace CreditCardRewards.Data.Context
                 entity.HasMany(e => e.Transactions)
                     .WithOne(t => t.CreditCard)
                     .HasForeignKey(t => t.CreditCardId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // UserProfile configuration
+            modelBuilder.Entity<UserProfile>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+                entity.Property(e => e.Email).IsRequired().HasMaxLength(150);
+                
+                entity.HasMany(e => e.CreditCards)
+                    .WithOne(c => c.UserProfile)
+                    .HasForeignKey(c => c.UserProfileId)
                     .OnDelete(DeleteBehavior.Cascade);
             });
 

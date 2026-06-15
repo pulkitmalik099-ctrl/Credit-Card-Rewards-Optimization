@@ -44,6 +44,9 @@ namespace CreditCardRewards.Data.Models
         public string DataSource { get; set; } = "Web Scrape"; // "Web Scrape", "Manual", etc.
         
         // Relationships
+        public Guid UserProfileId { get; set; }
+        public UserProfile? UserProfile { get; set; }
+
         public ICollection<RewardCategory> AcceleratedCategories { get; set; } = new List<RewardCategory>();
         public ICollection<RewardCap> RewardCaps { get; set; } = new List<RewardCap>();
         public ICollection<Milestone> Milestones { get; set; } = new List<Milestone>();

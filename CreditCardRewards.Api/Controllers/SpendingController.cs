@@ -42,13 +42,13 @@ namespace CreditCardRewards.Api.Controllers
         /// Get portfolio spending summary
         /// </summary>
         [HttpGet("portfolio/summary")]
-        public async Task<IActionResult> GetPortfolioSpendSummary(int? year = null)
+        public async Task<IActionResult> GetPortfolioSpendSummary([FromQuery] Guid userProfileId, int? year = null)
         {
             try
             {
-                _logger.LogInformation("Getting portfolio spend summary, Year: {Year}", year);
+                _logger.LogInformation("Getting portfolio spend summary for User: {UserProfileId}, Year: {Year}", userProfileId, year);
 
-                var summaries = await _spendTrackingService.GetPortfolioSpendSummaryAsync(year);
+                var summaries = await _spendTrackingService.GetPortfolioSpendSummaryAsync(userProfileId, year);
                 return Ok(new
                 {
                     Year = year ?? DateTime.Now.Year,

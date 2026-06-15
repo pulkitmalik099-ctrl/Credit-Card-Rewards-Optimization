@@ -29,13 +29,14 @@ namespace CreditCardRewards.Api.Controllers
         /// Get all credit cards in the portfolio
         /// </summary>
         [HttpGet]
-        public async Task<ActionResult<List<CreditCard>>> GetAllCards()
+        public async Task<ActionResult<List<CreditCard>>> GetAllCards([FromQuery] Guid userProfileId)
         {
-            _logger.LogInformation("Fetching all credit cards");
+            _logger.LogInformation("Fetching all credit cards for user {UserProfileId}", userProfileId);
             var cards = await _context.CreditCards
                 .Include(c => c.AcceleratedCategories)
                 .Include(c => c.RewardCaps)
                 .Include(c => c.Milestones)
+                .Where(c => c.UserProfileId == userProfileId)
                 .ToListAsync();
 
             return Ok(cards);
@@ -83,6 +84,7 @@ namespace CreditCardRewards.Api.Controllers
                 BaseRewardUnit = "Points",
                 AccumulatedSpend = request.AccumulatedSpend,
                 AccumulatedRewardPoints = request.AccumulatedRewardPoints,
+                UserProfileId = request.UserProfileId,
                 CreatedAt = DateTime.UtcNow,
                 LastUpdatedAt = DateTime.UtcNow
             };
@@ -114,6 +116,7 @@ namespace CreditCardRewards.Api.Controllers
                 BaseRewardUnit = "Points",
                 AccumulatedSpend = cardRequest.AccumulatedSpend,
                 AccumulatedRewardPoints = cardRequest.AccumulatedRewardPoints,
+                UserProfileId = request.UserProfileId,
                 CreatedAt = now,
                 LastUpdatedAt = now
             }).ToList();
@@ -203,12 +206,13 @@ namespace CreditCardRewards.Api.Controllers
         /// Get portfolio summary
         /// </summary>
         [HttpGet("portfolio/summary")]
-        public async Task<ActionResult<dynamic>> GetPortfolioSummary()
+        public async Task<ActionResult<dynamic>> GetPortfolioSummary([FromQuery] Guid userProfileId)
         {
-            _logger.LogInformation("Fetching portfolio summary");
+            _logger.LogInformation("Fetching portfolio summary for user {UserProfileId}", userProfileId);
 
             var cards = await _context.CreditCards
                 .Include(c => c.Transactions)
+                .Where(c => c.UserProfileId == userProfileId)
                 .ToListAsync();
 
             var summary = new

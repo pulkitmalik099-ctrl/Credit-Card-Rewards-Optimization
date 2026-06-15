@@ -32,7 +32,7 @@ namespace CreditCardRewards.Api.Controllers
         {
             try
             {
-                var portfolio = await _spendTrackingService.GetPortfolioSpendSummaryAsync();
+                var portfolio = await _spendTrackingService.GetPortfolioSpendSummaryAsync(request.UserProfileId);
 
                 if (!portfolio.Any())
                 {

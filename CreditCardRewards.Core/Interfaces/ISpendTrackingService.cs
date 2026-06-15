@@ -15,7 +15,7 @@ namespace CreditCardRewards.Core.Interfaces
         /// <summary>
         /// Get spend summary for all cards
         /// </summary>
-        Task<List<CardSpendSummary>> GetPortfolioSpendSummaryAsync(int? year = null);
+        Task<List<CardSpendSummary>> GetPortfolioSpendSummaryAsync(Guid userProfileId, int? year = null);
 
         /// <summary>
         /// Add a transaction and update spend tracking

@@ -21,5 +21,8 @@ namespace CreditCardRewards.Api.Models
         public decimal AccumulatedSpend { get; set; } = 0;
 
         public decimal AccumulatedRewardPoints { get; set; } = 0;
+
+        [Required]
+        public Guid UserProfileId { get; set; }
     }
 }

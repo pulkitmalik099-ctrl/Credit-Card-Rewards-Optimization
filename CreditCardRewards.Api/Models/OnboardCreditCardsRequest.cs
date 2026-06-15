@@ -5,6 +5,9 @@ namespace CreditCardRewards.Api.Models
     public class OnboardCreditCardsRequest
     {
         [Required]
+        public Guid UserProfileId { get; set; }
+
+        [Required]
         [MinLength(1, ErrorMessage = "Enter at least one credit card.")]
         public List<CreateCreditCardRequest> Cards { get; set; } = new();
     }

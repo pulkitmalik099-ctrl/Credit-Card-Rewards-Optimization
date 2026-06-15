@@ -108,9 +108,9 @@ namespace CreditCardRewards.Core.Services
         /// <summary>
         /// Get spend summary for all cards
         /// </summary>
-        public async Task<List<CardSpendSummary>> GetPortfolioSpendSummaryAsync(int? year = null)
+        public async Task<List<CardSpendSummary>> GetPortfolioSpendSummaryAsync(Guid userProfileId, int? year = null)
         {
-            var cards = await _context.CreditCards.ToListAsync();
+            var cards = await _context.CreditCards.Where(c => c.UserProfileId == userProfileId).ToListAsync();
             var summaries = new List<CardSpendSummary>();
 
             foreach (var card in cards)
