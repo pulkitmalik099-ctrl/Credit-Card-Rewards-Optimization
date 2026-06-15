@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Credit Card Rewards Optimizer</title>
-  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/styles.css?v=1.0.4">
 </head>
 <body>
   <main class="app-shell">
@@ -115,35 +115,84 @@
 
   <template id="card-row-template">
     <div class="card-row">
-      <label>
-        <span>Card name</span>
-        <input name="name" type="text" placeholder="HDFC Infinia" required maxlength="100">
-      </label>
-      <label>
-        <span>Issuer</span>
-        <input name="issuer" type="text" placeholder="HDFC" maxlength="50">
-      </label>
-      <label>
-        <span>Total limit</span>
-        <input name="totalLimit" type="number" placeholder="500000" required min="1" step="1">
-      </label>
-      <label>
-        <span>Base reward rate (%)</span>
-        <input name="baseRewardRate" type="number" placeholder="1" min="0" step="0.1">
-      </label>
-      <label>
-        <span>Point value (₹)</span>
-        <input name="baseRewardPointValue" type="number" placeholder="0.5" min="0" step="0.01">
-      </label>
-      <label>
-        <span>Current spend (₹)</span>
-        <input name="accumulatedSpend" type="number" placeholder="10000" min="0" step="1">
-      </label>
-      <label>
-        <span>Current points</span>
-        <input name="accumulatedRewardPoints" type="number" placeholder="2500" min="0" step="1">
-      </label>
-      <button type="button" class="icon-button remove-card" aria-label="Remove card">Remove</button>
+      <!-- Left side: Live Interactive Virtual Credit Card -->
+      <div class="card-preview-container">
+        <div class="virtual-card theme-blue">
+          <div class="virtual-card-glass"></div>
+          <div class="virtual-card-header">
+            <span class="virtual-card-issuer">ISSUER</span>
+            <div class="virtual-card-chip">
+              <svg viewBox="0 0 100 100" class="chip-svg">
+                <rect width="70" height="50" x="15" y="25" rx="6" fill="#facc15" opacity="0.85"/>
+                <path d="M 15 40 H 85 M 15 50 H 85 M 15 60 H 85 M 38 25 V 75 M 62 25 V 75" stroke="rgba(0,0,0,0.2)" stroke-width="1.5"/>
+              </svg>
+            </div>
+          </div>
+          <div class="virtual-card-body">
+            <h3 class="virtual-card-name">Card Name</h3>
+          </div>
+          <div class="virtual-card-footer">
+            <div class="virtual-card-stat">
+              <span>LIMIT</span>
+              <strong class="virtual-card-limit">₹0</strong>
+            </div>
+            <div class="virtual-card-stat">
+              <span>SPENT</span>
+              <strong class="virtual-card-spend">₹0</strong>
+            </div>
+            <div class="virtual-card-brand">
+              <div class="brand-circles">
+                <span class="circle-1"></span>
+                <span class="circle-2"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Live Color Palette Selector -->
+        <div class="theme-selector" aria-label="Choose card style">
+          <button type="button" class="theme-dot theme-dot-blue is-active" data-theme="blue" title="Cosmic Blue"></button>
+          <button type="button" class="theme-dot theme-dot-gold" data-theme="gold" title="Sunset Gold"></button>
+          <button type="button" class="theme-dot theme-dot-purple" data-theme="purple" title="Neon Nebula"></button>
+          <button type="button" class="theme-dot theme-dot-green" data-theme="green" title="Emerald Mint"></button>
+          <button type="button" class="theme-dot theme-dot-dark" data-theme="dark" title="Matte Black"></button>
+        </div>
+      </div>
+      
+      <!-- Right side: Compact Two-Column Input Form -->
+      <div class="card-fields-grid">
+        <label>
+          <span>Card Name</span>
+          <input name="name" type="text" placeholder="HDFC Infinia" required maxlength="100" class="input-name">
+        </label>
+        <label>
+          <span>Issuer</span>
+          <input name="issuer" type="text" placeholder="HDFC" maxlength="50" class="input-issuer">
+        </label>
+        <label>
+          <span>Total Limit (₹)</span>
+          <input name="totalLimit" type="number" placeholder="500000" required min="1" step="1" class="input-limit">
+        </label>
+        <label>
+          <span>Base Reward Rate (%)</span>
+          <input name="baseRewardRate" type="number" placeholder="1" min="0" step="0.1" class="input-rate">
+        </label>
+        <label>
+          <span>Point Value (₹)</span>
+          <input name="baseRewardPointValue" type="number" placeholder="0.5" min="0" step="0.01" class="input-point-value">
+        </label>
+        <label>
+          <span>Current Spend (₹)</span>
+          <input name="accumulatedSpend" type="number" placeholder="10000" min="0" step="1" class="input-spend">
+        </label>
+        <label>
+          <span>Current Points Earned</span>
+          <input name="accumulatedRewardPoints" type="number" placeholder="2500" min="0" step="1" class="input-points">
+        </label>
+        <div class="card-actions-cell">
+          <button type="button" class="icon-button remove-card" aria-label="Remove card">Remove Card</button>
+        </div>
+      </div>
     </div>
   </template>
 
@@ -174,6 +223,6 @@
     </div>
   </div>
 
-  <script src="/app.js"></script>
+  <script src="/app.js?v=1.0.4"></script>
 </body>
 </html>

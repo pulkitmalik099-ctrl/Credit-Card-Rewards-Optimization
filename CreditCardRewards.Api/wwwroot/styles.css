@@ -222,25 +222,312 @@ h2 {
 
 .card-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 16px;
-  align-items: end;
-  padding: 18px;
+  grid-template-columns: 240px 1fr;
+  gap: 24px;
+  align-items: start;
+  padding: 24px;
   border: 1px solid var(--line);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.01);
-  transition: all 0.2s;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(12px);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
 }
 
 .card-row:hover {
   background: rgba(255, 255, 255, 0.03);
-  border-color: rgba(99, 102, 241, 0.2);
+  border-color: rgba(99, 102, 241, 0.35);
+  box-shadow: 0 12px 40px 0 rgba(99, 102, 241, 0.12);
 }
 
-.card-row .icon-button {
+/* Card Preview Panel */
+.card-preview-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 240px;
+}
+
+.virtual-card {
+  width: 240px;
+  height: 148px;
+  border-radius: 14px;
+  padding: 16px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+  user-select: none;
+}
+
+.virtual-card:hover {
+  transform: translateY(-4px) scale(1.02);
+}
+
+.virtual-card-glass {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0) 65%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.virtual-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 2;
+}
+
+.virtual-card-issuer {
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.85);
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.virtual-card-chip {
+  width: 28px;
+  height: 20px;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.chip-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.virtual-card-body {
+  z-index: 2;
+  margin: 6px 0;
+}
+
+.virtual-card-name {
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  margin: 0;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.virtual-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  z-index: 2;
+}
+
+.virtual-card-stat {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+.virtual-card-stat span {
+  font-size: 0.52rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.virtual-card-stat strong {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.virtual-card-brand {
+  height: 20px;
+  display: flex;
+  align-items: center;
+}
+
+.brand-circles {
+  display: flex;
+  position: relative;
+  width: 30px;
+  height: 20px;
+}
+
+.brand-circles span {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  position: absolute;
+  opacity: 0.85;
+}
+
+.brand-circles .circle-1 {
+  background: #ef4444;
+  left: 0;
+}
+
+.brand-circles .circle-2 {
+  background: #f59e0b;
+  left: 12px;
+}
+
+/* Gradient Themes */
+.virtual-card.theme-blue {
+  background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #3b82f6 100%);
+  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+  border-color: rgba(59, 130, 246, 0.4);
+}
+
+.virtual-card.theme-gold {
+  background: linear-gradient(135deg, #1c1917 0%, #78350f 60%, #eab308 100%);
+  box-shadow: 0 8px 24px rgba(234, 179, 8, 0.25), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+  border-color: rgba(234, 179, 8, 0.4);
+}
+
+.virtual-card.theme-purple {
+  background: linear-gradient(135deg, #2e1065 0%, #6b21a8 55%, #d946ef 100%);
+  box-shadow: 0 8px 24px rgba(168, 85, 247, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+  border-color: rgba(168, 85, 247, 0.4);
+}
+
+.virtual-card.theme-green {
+  background: linear-gradient(135deg, #022c22 0%, #065f46 50%, #10b981 100%);
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+.virtual-card.theme-dark {
+  background: linear-gradient(135deg, #030712 0%, #1f2937 60%, #4b5563 100%);
+  box-shadow: 0 8px 24px rgba(17, 24, 39, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.15);
+  border-color: rgba(156, 163, 175, 0.3);
+}
+
+/* Large Glowing card for recommendations */
+.virtual-card.large {
+  width: 100%;
+  max-width: 310px;
+  height: 180px;
+  padding: 20px;
+  border-radius: 18px;
+}
+
+.virtual-card.large .virtual-card-issuer {
+  font-size: 0.72rem;
+  max-width: 180px;
+}
+
+.virtual-card.large .virtual-card-chip {
+  width: 36px;
+  height: 26px;
+  border-radius: 5px;
+}
+
+.virtual-card.large .virtual-card-name {
+  font-size: 1.35rem;
+}
+
+.virtual-card.large .virtual-card-stat span {
+  font-size: 0.6rem;
+}
+
+.virtual-card.large .virtual-card-stat strong {
+  font-size: 1rem;
+}
+
+.virtual-card.large .brand-circles {
+  width: 42px;
+  height: 28px;
+}
+
+.virtual-card.large .brand-circles span {
+  width: 24px;
+  height: 24px;
+}
+
+.virtual-card.large .brand-circles .circle-2 {
+  left: 14px;
+}
+
+.virtual-card.large.glowing-glow {
+  animation: pulse-glow 2.5s infinite alternate ease-in-out;
+}
+
+@keyframes pulse-glow {
+  0% {
+    transform: translateY(0) scale(1);
+    box-shadow: 0 10px 30px rgba(99, 102, 241, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+  }
+  100% {
+    transform: translateY(-5px) scale(1.02);
+    box-shadow: 0 20px 50px rgba(99, 102, 241, 0.65), 0 0 30px rgba(217, 70, 239, 0.3), inset 0 1px 2px rgba(255, 255, 255, 0.35);
+  }
+}
+
+/* Theme Dots Selector */
+.theme-selector {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  background: rgba(15, 23, 42, 0.45);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 6px 10px;
+}
+
+.theme-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0;
+}
+
+.theme-dot:hover {
+  transform: scale(1.25);
+}
+
+.theme-dot.is-active {
+  border-color: #ffffff;
+  transform: scale(1.15);
+}
+
+.theme-dot-blue { background-color: #3b82f6 !important; }
+.theme-dot-gold { background-color: #eab308 !important; }
+.theme-dot-purple { background-color: #d946ef !important; }
+.theme-dot-green { background-color: #10b981 !important; }
+.theme-dot-dark { background-color: #6b7280 !important; }
+
+/* Compact Inputs Grid */
+.card-fields-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  width: 100%;
+}
+
+.card-actions-cell {
   grid-column: 1 / -1;
-  justify-self: start;
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4px;
 }
 
 .icon-button {
@@ -357,6 +644,9 @@ select:focus {
 
 /* Glowing Highlight Pick */
 .best-pick {
+  display: flex;
+  gap: 28px;
+  align-items: center;
   background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(217, 70, 239, 0.08) 100%);
   border: 1px solid rgba(99, 102, 241, 0.25);
   border-radius: 16px;
@@ -379,6 +669,32 @@ select:focus {
   pointer-events: none;
 }
 
+.best-pick-card-wrapper {
+  flex-shrink: 0;
+  width: 100%;
+  max-width: 310px;
+}
+
+.best-pick-details {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.best-pick-badge {
+  display: inline-block;
+  align-self: flex-start;
+  padding: 4px 10px;
+  background: var(--accent-gradient);
+  border-radius: 20px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #ffffff;
+  margin-bottom: 12px;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
 .best-pick-label {
   text-transform: uppercase;
   font-size: 0.72rem;
@@ -391,9 +707,9 @@ select:focus {
 }
 
 .best-pick h3 {
-  font-size: 1.8rem;
+  font-size: 1.6rem;
   font-weight: 800;
-  margin: 0 0 10px;
+  margin: 0 0 8px;
   letter-spacing: -0.02em;
 }
 
@@ -839,6 +1155,17 @@ select:focus {
   .recommend-layout,
   .card-row {
     grid-template-columns: 1fr;
+  }
+
+  .best-pick {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 20px;
+  }
+
+  .best-pick-card-wrapper {
+    display: flex;
+    justify-content: center;
   }
 
   .toolbar,

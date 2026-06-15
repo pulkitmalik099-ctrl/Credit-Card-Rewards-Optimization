@@ -35,16 +35,108 @@ function addCardRow(values = {}) {
   const row = fragment.querySelector(".card-row");
 
   row.dataset.id = values.id ?? "";
-  row.querySelector('[name="name"]').value = values.name ?? "";
-  row.querySelector('[name="issuer"]').value = values.issuer ?? "";
-  row.querySelector('[name="totalLimit"]').value = values.totalLimit ?? "";
-  row.querySelector('[name="baseRewardRate"]').value = values.baseRewardRate ?? "";
-  row.querySelector('[name="baseRewardPointValue"]').value = values.baseRewardPointValue ?? "";
-  row.querySelector('[name="accumulatedSpend"]').value = values.accumulatedSpend ?? "";
-  row.querySelector('[name="accumulatedRewardPoints"]').value = values.accumulatedRewardPoints ?? "";
+  
+  // Input fields references
+  const inputName = row.querySelector('[name="name"]');
+  const inputIssuer = row.querySelector('[name="issuer"]');
+  const inputLimit = row.querySelector('[name="totalLimit"]');
+  const inputRate = row.querySelector('[name="baseRewardRate"]');
+  const inputPointValue = row.querySelector('[name="baseRewardPointValue"]');
+  const inputSpend = row.querySelector('[name="accumulatedSpend"]');
+  const inputPoints = row.querySelector('[name="accumulatedRewardPoints"]');
+
+  // Set initial input values
+  inputName.value = values.name ?? "";
+  inputIssuer.value = values.issuer ?? "";
+  inputLimit.value = values.totalLimit ?? "";
+  inputRate.value = values.baseRewardRate ?? "";
+  inputPointValue.value = values.baseRewardPointValue ?? "";
+  inputSpend.value = values.accumulatedSpend ?? "";
+  inputPoints.value = values.accumulatedRewardPoints ?? "";
+
+  // Preview elements references
+  const vCard = row.querySelector(".virtual-card");
+  const vName = row.querySelector(".virtual-card-name");
+  const vIssuer = row.querySelector(".virtual-card-issuer");
+  const vLimit = row.querySelector(".virtual-card-limit");
+  const vSpend = row.querySelector(".virtual-card-spend");
+
+  // Real-time update helper function
+  function updatePreview() {
+    vName.textContent = inputName.value.trim() || "Card Name";
+    vIssuer.textContent = inputIssuer.value.trim().toUpperCase() || "ISSUER";
+    
+    const limitVal = Number(inputLimit.value) || 0;
+    vLimit.textContent = limitVal > 0 ? formatCurrency(limitVal) : "₹0";
+
+    const spendVal = Number(inputSpend.value) || 0;
+    vSpend.textContent = spendVal > 0 ? formatCurrency(spendVal) : "₹0";
+  }
+
+  // Bind key/input events for real-time preview updates
+  [inputName, inputIssuer, inputLimit, inputSpend].forEach(input => {
+    input.addEventListener("input", updatePreview);
+  });
+
+  // Theme logic
+  let activeTheme = "blue";
+  if (values.id) {
+    activeTheme = localStorage.getItem("card-theme-" + values.id) || inferCardTheme(values.name, values.issuer);
+  } else {
+    activeTheme = inferCardTheme(values.name, values.issuer);
+  }
+  row.dataset.selectedTheme = activeTheme;
+
+  // Apply active theme class
+  function applyTheme(themeName) {
+    vCard.className = `virtual-card theme-${themeName}`;
+    row.dataset.selectedTheme = themeName;
+    if (row.dataset.id) {
+      localStorage.setItem("card-theme-" + row.dataset.id, themeName);
+    }
+    
+    // Highlight active dot
+    row.querySelectorAll(".theme-dot").forEach(dot => {
+      dot.classList.toggle("is-active", dot.dataset.theme === themeName);
+    });
+  }
+
+  applyTheme(activeTheme);
+  updatePreview();
+
+  // Bind click listener to theme dots
+  row.querySelectorAll(".theme-dot").forEach(dot => {
+    dot.addEventListener("click", () => {
+      applyTheme(dot.dataset.theme);
+    });
+  });
+
+  // Auto theme selector based on text typing (only if user hasn't explicitly clicked a theme dot yet)
+  let userSelectedThemeExplicitly = false;
+  row.querySelectorAll(".theme-dot").forEach(dot => {
+    dot.addEventListener("click", () => {
+      userSelectedThemeExplicitly = true;
+    });
+  });
+
+  inputName.addEventListener("change", () => {
+    if (!userSelectedThemeExplicitly) {
+      const newTheme = inferCardTheme(inputName.value, inputIssuer.value);
+      applyTheme(newTheme);
+    }
+  });
+  inputIssuer.addEventListener("change", () => {
+    if (!userSelectedThemeExplicitly) {
+      const newTheme = inferCardTheme(inputName.value, inputIssuer.value);
+      applyTheme(newTheme);
+    }
+  });
 
   row.querySelector(".remove-card").addEventListener("click", () => {
     if (cardList.children.length > 1) {
+      if (row.dataset.id) {
+        localStorage.removeItem("card-theme-" + row.dataset.id);
+      }
       row.remove();
     }
   });
@@ -89,6 +181,15 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+
+function inferCardTheme(cardName = "", issuer = "") {
+  const text = `${cardName} ${issuer}`.toLowerCase();
+  if (text.includes("gold") || text.includes("diners") || text.includes("reserve") || text.includes("magnus")) return "gold";
+  if (text.includes("amazon") || text.includes("sbi") || text.includes("axis") || text.includes("travel")) return "green";
+  if (text.includes("infinia") || text.includes("black") || text.includes("metal") || text.includes("regalia") || text.includes("saphire")) return "dark";
+  if (text.includes("onecard") || text.includes("neon") || text.includes("millennia") || text.includes("purple") || text.includes("coral")) return "purple";
+  return "blue"; // Default
 }
 
 function formatCurrency(value) {
@@ -150,31 +251,91 @@ function renderRecommendations(recommendations, expense) {
   }
 
   const best = recommendations[0];
+  
+  // Find or infer theme for the best card
+  let bestCardTheme = "blue";
+  if (best.cardId) {
+    bestCardTheme = localStorage.getItem("card-theme-" + best.cardId) || inferCardTheme(best.cardName, best.issuer);
+  } else {
+    bestCardTheme = inferCardTheme(best.cardName, best.issuer);
+  }
 
   recommendOutput.className = "recommendation-list";
   recommendOutput.innerHTML = `
     <article class="best-pick">
-      <p class="best-pick-label">Use this card</p>
-      <h3>${escapeHtml(best.cardName)}</h3>
-      <p class="best-pick-value">${formatCurrency(best.rewardValue)} total estimated value</p>
-      <p class="best-pick-return">${numberFormatter.format(best.effectiveReturnPercentage)}% effective return on ${formatCurrency(expense.amount)}</p>
-      <p class="best-pick-detail">${escapeHtml(formatRewardBreakdown(best.details))}</p>
-      <p class="best-pick-reason">${escapeHtml(best.reasoning || best.details?.reasoning || "")}</p>
+      <!-- Virtual Card on the left -->
+      <div class="best-pick-card-wrapper">
+        <div class="virtual-card large theme-${bestCardTheme} glowing-glow">
+          <div class="virtual-card-glass"></div>
+          <div class="virtual-card-header">
+            <span class="virtual-card-issuer">${escapeHtml(best.issuer || "CARD").toUpperCase()}</span>
+            <div class="virtual-card-chip">
+              <svg viewBox="0 0 100 100" class="chip-svg">
+                <rect width="70" height="50" x="15" y="25" rx="6" fill="#facc15" opacity="0.85"/>
+                <path d="M 15 40 H 85 M 15 50 H 85 M 15 60 H 85 M 38 25 V 75 M 62 25 V 75" stroke="rgba(0,0,0,0.2)" stroke-width="1.5"/>
+              </svg>
+            </div>
+          </div>
+          <div class="virtual-card-body">
+            <h3 class="virtual-card-name">${escapeHtml(best.cardName)}</h3>
+          </div>
+          <div class="virtual-card-footer">
+            <div class="virtual-card-stat">
+              <span>RETURN VALUE</span>
+              <strong style="color: #4ade80;">${formatCurrency(best.rewardValue)}</strong>
+            </div>
+            <div class="virtual-card-stat">
+              <span>RETURN %</span>
+              <strong style="color: #38bdf8;">${numberFormatter.format(best.effectiveReturnPercentage)}%</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Details on the right -->
+      <div class="best-pick-details">
+        <span class="best-pick-badge">🔥 BEST VALUE OPTION</span>
+        <h3>${escapeHtml(best.cardName)}</h3>
+        <p class="best-pick-value">${formatCurrency(best.rewardValue)} total estimated value</p>
+        <p class="best-pick-return">${numberFormatter.format(best.effectiveReturnPercentage)}% effective return on ${formatCurrency(expense.amount)}</p>
+        <p class="best-pick-detail"><strong>Breakdown:</strong> ${escapeHtml(formatRewardBreakdown(best.details))}</p>
+        <p class="best-pick-reason"><strong>Why this card?</strong> ${escapeHtml(best.reasoning || best.details?.reasoning || "")}</p>
+      </div>
     </article>
 
     <div class="ranked-list">
       <h3>All cards ranked</h3>
-      ${recommendations.map((item) => `
-        <article class="rank-item ${item.rank === 1 ? "is-top" : ""}">
-          <div class="rank-badge">#${item.rank}</div>
-          <div class="rank-body">
-            <h4>${escapeHtml(item.cardName)}</h4>
-            <p class="rank-value">${formatCurrency(item.rewardValue)} · ${numberFormatter.format(item.effectiveReturnPercentage)}% return</p>
-            <p class="rank-breakdown">${escapeHtml(formatRewardBreakdown(item.details))}</p>
-            <p class="rank-reason">${escapeHtml(item.reasoning || item.details?.reasoning || "")}</p>
-          </div>
-        </article>
-      `).join("")}
+      ${recommendations.map((item) => {
+        let cardTheme = "blue";
+        if (item.cardId) {
+          cardTheme = localStorage.getItem("card-theme-" + item.cardId) || inferCardTheme(item.cardName, item.issuer);
+        } else {
+          cardTheme = inferCardTheme(item.cardName, item.issuer);
+        }
+        
+        return `
+          <article class="rank-item ${item.rank === 1 ? "is-top" : ""}">
+            <div class="rank-badge">#${item.rank}</div>
+            <div class="rank-body" style="display: flex; gap: 16px; align-items: center; width: 100%;">
+              <div class="virtual-card theme-${cardTheme}" style="width: 100px; height: 62px; padding: 6px 8px; border-radius: 6px; font-size: 0.5rem; flex-shrink: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.2);">
+                <div class="virtual-card-glass"></div>
+                <div style="font-size: 0.35rem; font-weight: 800; opacity: 0.8; text-transform: uppercase; line-height: 1;">${escapeHtml(item.issuer || "CARD").toUpperCase()}</div>
+                <div style="font-size: 0.45rem; font-weight: 800; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2;">${escapeHtml(item.cardName)}</div>
+                <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 4px; font-size: 0.35rem; font-weight: 600; opacity: 0.8; line-height: 1;">
+                  <span>VAL: ${formatCurrency(item.rewardValue)}</span>
+                  <span>${numberFormatter.format(item.effectiveReturnPercentage)}%</span>
+                </div>
+              </div>
+              <div style="flex-grow: 1;">
+                <h4 style="margin: 0 0 4px;">${escapeHtml(item.cardName)}</h4>
+                <p class="rank-value">${formatCurrency(item.rewardValue)} · ${numberFormatter.format(item.effectiveReturnPercentage)}% return</p>
+                <p class="rank-breakdown">${escapeHtml(formatRewardBreakdown(item.details))}</p>
+                <p class="rank-reason">${escapeHtml(item.reasoning || item.details?.reasoning || "")}</p>
+              </div>
+            </div>
+          </article>
+        `;
+      }).join("")}
     </div>
   `;
 }
@@ -387,6 +548,11 @@ document.querySelector("#cards-form").addEventListener("submit", async (event) =
   savedCards.forEach((card, index) => {
     if (rows[index]) {
       rows[index].dataset.id = card.id;
+      // Save theme to localStorage under the database ID
+      const chosenTheme = rows[index].dataset.selectedTheme;
+      if (chosenTheme) {
+        localStorage.setItem("card-theme-" + card.id, chosenTheme);
+      }
     }
   });
 
