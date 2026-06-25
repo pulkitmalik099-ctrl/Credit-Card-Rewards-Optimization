@@ -6,6 +6,16 @@ const recommendStatusEl = document.querySelector("#recommend-status");
 const recommendOutput = document.querySelector("#recommend-output");
 const portfolioPanel = document.querySelector("#portfolio-panel");
 const recommendPanel = document.querySelector("#recommend-panel");
+const statementsPanel = document.querySelector("#statements-panel");
+const statementsStatus = document.querySelector("#statements-status");
+const statementsList = document.querySelector("#statements-list");
+const statementModal = document.querySelector("#statement-modal");
+const statementCardSelect = document.querySelector("#statement-card-select");
+const statementConfirmBtn = document.querySelector("#statement-confirm-btn");
+const statementDismissBtn = document.querySelector("#statement-dismiss-btn");
+const statementModalStatus = document.querySelector("#statement-modal-status");
+
+let pendingStatementId = null;
 
 let activeUserProfile = null;
 
@@ -142,6 +152,44 @@ function addCardRow(values = {}) {
         localStorage.removeItem("card-theme-" + row.dataset.id);
       }
       row.remove();
+    }
+  });
+
+  // Fetch Rates button
+  const fetchBtn = row.querySelector(".fetch-rates-btn");
+  const fetchStatus = row.querySelector(".fetch-rates-status");
+  const inputRate = row.querySelector('[name="baseRewardRate"]');
+  const inputPointValue = row.querySelector('[name="baseRewardPointValue"]');
+
+  fetchBtn.addEventListener("click", async () => {
+    const name = inputName.value.trim();
+    const issuer = inputIssuer.value.trim();
+    if (!name) { fetchStatus.textContent = "Enter card name first."; return; }
+
+    fetchBtn.disabled = true;
+    fetchStatus.textContent = "Fetching…";
+
+    try {
+      const res = await fetch(`/api/cards/lookup?name=${encodeURIComponent(name)}&issuer=${encodeURIComponent(issuer || "")}`);
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+
+      if (data.baseRewardRate) inputRate.value = data.baseRewardRate;
+      if (data.baseRewardPointValue) inputPointValue.value = data.baseRewardPointValue;
+
+      const annualFeeInput = row.querySelector('[name="annualFee"]');
+      if (annualFeeInput && data.annualFee) annualFeeInput.value = data.annualFee;
+
+      updatePreview();
+      fetchStatus.textContent = data.isConfident
+        ? `✓ Fetched · ${data.disclaimer}`
+        : `⚠ Low confidence — verify manually · ${data.disclaimer}`;
+      fetchStatus.style.color = data.isConfident ? "#4ade80" : "#facc15";
+    } catch (err) {
+      fetchStatus.textContent = "Fetch failed: " + err.message;
+      fetchStatus.style.color = "#f87171";
+    } finally {
+      fetchBtn.disabled = false;
     }
   });
 
@@ -353,6 +401,10 @@ function switchTab(tabName) {
   portfolioPanel.hidden = tabName !== "portfolio";
   recommendPanel.classList.toggle("is-active", tabName === "recommend");
   recommendPanel.hidden = tabName !== "recommend";
+  statementsPanel.classList.toggle("is-active", tabName === "statements");
+  statementsPanel.hidden = tabName !== "statements";
+
+  if (tabName === "statements") loadPendingStatements();
 }
 
 async function refreshPlan() {
@@ -675,6 +727,145 @@ registerForm.addEventListener("submit", async (e) => {
     profileError.textContent = "Registration failed: " + err.message;
     profileError.style.display = "block";
   }
+});
+
+// ── Statement Import ─────────────────────────────────────────────────────────
+
+async function loadPendingStatements() {
+  statementsStatus.textContent = "Loading…";
+  try {
+    const res = await fetch("/api/statements/pending");
+    const pending = await res.json();
+    statementsStatus.textContent = "";
+
+    if (!pending.length) {
+      statementsList.className = "empty-state";
+      statementsList.textContent = "No statements pending review. Upload a PDF or CSV above.";
+      return;
+    }
+
+    statementsList.className = "statements-pending-list";
+    statementsList.innerHTML = pending.map(s => `
+      <article class="statement-card" data-id="${escapeHtml(s.id)}">
+        <div class="statement-card-header">
+          <strong>${escapeHtml(s.fileName)}</strong>
+          <span class="statement-badge">${escapeHtml(s.detectedIssuer || "Unknown bank")}</span>
+        </div>
+        <div class="statement-card-meta">
+          ${s.statementPeriodStart ? `Period: ${s.statementPeriodStart.slice(0,10)} → ${(s.statementPeriodEnd || "").slice(0,10)}` : "Period: Unknown"}
+          · ${s.transactions.length} transactions · ₹${(s.totalSpend || 0).toLocaleString("en-IN")} spend · ${s.rewardPointsEarned || 0} pts
+        </div>
+        <div class="statement-card-actions">
+          <button type="button" class="primary-button btn-review-statement">Review &amp; Import</button>
+        </div>
+      </article>
+    `).join("");
+
+    statementsList.querySelectorAll(".btn-review-statement").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const card = btn.closest("[data-id]");
+        const stmt = pending.find(s => s.id === card.dataset.id);
+        if (stmt) openStatementModal(stmt);
+      });
+    });
+  } catch (err) {
+    statementsStatus.textContent = "Failed to load statements: " + err.message;
+  }
+}
+
+function openStatementModal(statement) {
+  pendingStatementId = statement.id;
+  const meta = document.querySelector("#statement-modal-meta");
+  const txEl = document.querySelector("#statement-modal-transactions");
+
+  meta.innerHTML = `
+    <p><strong>File:</strong> ${escapeHtml(statement.fileName)}</p>
+    <p><strong>Bank:</strong> ${escapeHtml(statement.detectedIssuer || "Unknown")} &nbsp;|&nbsp; <strong>Card:</strong> ${escapeHtml(statement.detectedCardName || "Unknown")}</p>
+    <p><strong>Total spend:</strong> ₹${(statement.totalSpend || 0).toLocaleString("en-IN")} &nbsp;|&nbsp; <strong>Reward points:</strong> ${statement.rewardPointsEarned || 0}</p>
+  `;
+
+  txEl.innerHTML = statement.transactions.length
+    ? `<table class="tx-table">
+        <thead><tr><th>Date</th><th>Merchant</th><th>Amount</th><th>Points</th><th>Category</th></tr></thead>
+        <tbody>
+          ${statement.transactions.map(tx => `
+            <tr>
+              <td>${escapeHtml((tx.date || "").slice(0,10))}</td>
+              <td>${escapeHtml(tx.merchant)}</td>
+              <td>₹${(tx.amount || 0).toLocaleString("en-IN")}</td>
+              <td>${tx.rewardPoints || 0}</td>
+              <td>${escapeHtml(tx.category || "—")}</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>`
+    : "<p>No transactions extracted.</p>";
+
+  // Populate card select from the current portfolio
+  const rows = cardList.querySelectorAll(".card-row");
+  statementCardSelect.innerHTML = '<option value="">-- Select card --</option>';
+  rows.forEach(row => {
+    const name = row.querySelector('[name="name"]').value;
+    const id = row.dataset.id;
+    if (id) {
+      const opt = document.createElement("option");
+      opt.value = id;
+      opt.textContent = name;
+      statementCardSelect.appendChild(opt);
+    }
+  });
+
+  statementModalStatus.textContent = "";
+  statementModal.hidden = false;
+}
+
+document.querySelector("#statement-upload").addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  statementsStatus.textContent = `Parsing ${file.name}…`;
+
+  const form = new FormData();
+  form.append("file", file);
+
+  try {
+    const res = await fetch("/api/statements/upload", { method: "POST", body: form });
+    if (!res.ok) throw new Error(await res.text());
+    statementsStatus.textContent = "Parsed. Check pending list below.";
+    await loadPendingStatements();
+  } catch (err) {
+    statementsStatus.textContent = "Upload failed: " + err.message;
+  }
+
+  e.target.value = "";
+});
+
+statementConfirmBtn.addEventListener("click", async () => {
+  const cardId = statementCardSelect.value;
+  if (!cardId) { statementModalStatus.textContent = "Select a card first."; return; }
+
+  statementConfirmBtn.disabled = true;
+  statementModalStatus.textContent = "Importing…";
+
+  try {
+    const res = await fetch(`/api/statements/${pendingStatementId}/confirm?cardId=${cardId}`, { method: "POST" });
+    if (!res.ok) throw new Error(await res.text());
+    const result = await res.json();
+    statementModal.hidden = true;
+    statementsStatus.textContent = `✓ Imported ${result.imported} transactions · ${result.rewardPointsAdded} pts added.`;
+    await loadPendingStatements();
+    await loadProfileData();
+  } catch (err) {
+    statementModalStatus.textContent = "Import failed: " + err.message;
+  } finally {
+    statementConfirmBtn.disabled = false;
+  }
+});
+
+statementDismissBtn.addEventListener("click", async () => {
+  if (!pendingStatementId) return;
+  await fetch(`/api/statements/${pendingStatementId}`, { method: "DELETE" });
+  statementModal.hidden = true;
+  await loadPendingStatements();
 });
 
 // Load Profile on startup

@@ -26,6 +26,7 @@
       <nav class="tab-nav" aria-label="App sections">
         <button type="button" class="tab-button is-active" data-tab="portfolio">My cards</button>
         <button type="button" class="tab-button" data-tab="recommend">Find best card</button>
+        <button type="button" class="tab-button" data-tab="statements">Import statements</button>
       </nav>
     </header>
 
@@ -169,6 +170,12 @@
           <span>Issuer</span>
           <input name="issuer" type="text" placeholder="HDFC" maxlength="50" class="input-issuer">
         </label>
+        <div class="fetch-rates-cell">
+          <button type="button" class="fetch-rates-btn secondary-button" title="Auto-fill reward rates using AI">
+            ✦ Fetch Rates
+          </button>
+          <span class="fetch-rates-status"></span>
+        </div>
         <label>
           <span>Total Limit (₹)</span>
           <input name="totalLimit" type="number" placeholder="500000" required min="1" step="1" class="input-limit">
@@ -195,6 +202,47 @@
       </div>
     </div>
   </template>
+
+  <!-- Statements Panel -->
+  <section id="statements-panel" class="panel" aria-label="Import statements" hidden>
+    <div class="workspace">
+      <div class="toolbar">
+        <h2>Import card statements</h2>
+        <label class="primary-button upload-label">
+          Upload PDF / CSV
+          <input type="file" id="statement-upload" accept=".pdf,.csv" hidden>
+        </label>
+      </div>
+      <p class="form-hint">
+        Drop your bank statement PDFs or CSVs here. The AI will extract transactions and reward points — you review before anything is saved.
+        <br>Or place files in the <code>statements/</code> folder next to the app and they are picked up automatically.
+      </p>
+      <div id="statements-status" role="status" aria-live="polite"></div>
+      <div id="statements-list" class="empty-state">No statements pending review.</div>
+    </div>
+  </section>
+
+  <!-- Statement Preview Modal -->
+  <div id="statement-modal" class="modal-overlay" hidden>
+    <div class="modal-container modal-wide">
+      <div class="modal-content">
+        <h2>Review imported statement</h2>
+        <div id="statement-modal-meta" class="statement-meta"></div>
+        <div id="statement-modal-transactions" class="statement-transactions"></div>
+        <div class="form-group">
+          <label for="statement-card-select">Link to card in your portfolio</label>
+          <select id="statement-card-select">
+            <option value="">-- Select card --</option>
+          </select>
+        </div>
+        <div class="modal-actions">
+          <button type="button" id="statement-confirm-btn" class="primary-button">Import transactions</button>
+          <button type="button" id="statement-dismiss-btn" class="secondary-button">Discard</button>
+        </div>
+        <div id="statement-modal-status" role="status" aria-live="polite"></div>
+      </div>
+    </div>
+  </div>
 
   <!-- Profile Setup/Switch Modal Overlay -->
   <div id="profile-overlay" class="modal-overlay">

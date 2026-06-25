@@ -5,6 +5,7 @@ using CreditCardRewards.Core.Interfaces;
 using CreditCardRewards.Core.Services;
 using CreditCardRewards.DataRefresh.Interfaces;
 using CreditCardRewards.DataRefresh.Services;
+using Microsoft.AspNetCore.Http.Features;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -42,6 +43,12 @@ builder.Services.AddScoped<IRewardCalculationService, RewardCalculationService>(
 builder.Services.AddScoped<ITransactionRecommendationService, TransactionRecommendationService>();
 builder.Services.AddScoped<ISpendTrackingService, SpendTrackingService>();
 builder.Services.AddScoped<ICardOfferRefreshService, CardOfferRefreshService>();
+builder.Services.AddScoped<ICardLookupService, CardLookupService>();
+builder.Services.AddSingleton<IStatementParserService, StatementParserService>();
+builder.Services.AddHostedService<StatementFolderWatcher>();
+
+// Allow large file uploads for statement PDFs
+builder.Services.Configure<FormOptions>(o => o.MultipartBodyLengthLimit = 20 * 1024 * 1024);
 
 // Add controllers
 builder.Services.AddControllers();

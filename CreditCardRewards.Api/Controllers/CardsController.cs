@@ -4,6 +4,7 @@ using CreditCardRewards.Api.Models;
 using CreditCardRewards.Data.Context;
 using CreditCardRewards.Data.Models;
 using CreditCardRewards.DataRefresh.Interfaces;
+using CreditCardRewards.DataRefresh.Models;
 
 namespace CreditCardRewards.Api.Controllers
 {
@@ -13,16 +14,37 @@ namespace CreditCardRewards.Api.Controllers
     {
         private readonly AppDbContext _context;
         private readonly ICardOfferRefreshService _cardOfferRefreshService;
+        private readonly ICardLookupService _cardLookupService;
         private readonly ILogger<CardsController> _logger;
 
         public CardsController(
             AppDbContext context,
             ICardOfferRefreshService cardOfferRefreshService,
+            ICardLookupService cardLookupService,
             ILogger<CardsController> logger)
         {
             _context = context;
             _cardOfferRefreshService = cardOfferRefreshService;
+            _cardLookupService = cardLookupService;
             _logger = logger;
+        }
+
+        /// <summary>
+        /// Auto-fetch reward rates for a card using OpenAI
+        /// </summary>
+        [HttpGet("lookup")]
+        public async Task<ActionResult<CardLookupResult>> LookupCardRates([FromQuery] string name, [FromQuery] string issuer)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                return BadRequest("Card name is required.");
+
+            _logger.LogInformation("Looking up reward rates for {CardName} / {Issuer}", name, issuer);
+            var result = await _cardLookupService.LookupCardAsync(name, issuer ?? "Unknown");
+
+            if (result == null)
+                return StatusCode(503, "Card lookup unavailable. Check OpenAI API key configuration.");
+
+            return Ok(result);
         }
 
         /// <summary>
