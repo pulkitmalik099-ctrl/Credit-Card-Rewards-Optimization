@@ -181,8 +181,6 @@ function addCardRow(values = {}) {
   // Fetch Rates button
   const fetchBtn = row.querySelector(".fetch-rates-btn");
   const fetchStatus = row.querySelector(".fetch-rates-status");
-  const inputRate = row.querySelector('[name="baseRewardRate"]');
-  const inputPointValue = row.querySelector('[name="baseRewardPointValue"]');
 
   fetchBtn.addEventListener("click", async () => {
     const name = inputName.value.trim();
