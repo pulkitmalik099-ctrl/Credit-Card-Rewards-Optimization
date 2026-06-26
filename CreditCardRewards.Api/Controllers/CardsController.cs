@@ -3,11 +3,13 @@ using Microsoft.EntityFrameworkCore;
 using CreditCardRewards.Api.Models;
 using CreditCardRewards.Data.Context;
 using CreditCardRewards.Data.Models;
+using Microsoft.AspNetCore.Authorization;
 using CreditCardRewards.DataRefresh.Interfaces;
 using CreditCardRewards.DataRefresh.Models;
 
 namespace CreditCardRewards.Api.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class CardsController : ControllerBase

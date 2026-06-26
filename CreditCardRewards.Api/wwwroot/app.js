@@ -7,6 +7,7 @@ const recommendOutput = document.querySelector("#recommend-output");
 const portfolioPanel = document.querySelector("#portfolio-panel");
 const recommendPanel = document.querySelector("#recommend-panel");
 const statementsPanel = document.querySelector("#statements-panel");
+const advicePanel = document.querySelector("#advice-panel");
 const statementsStatus = document.querySelector("#statements-status");
 const statementsList = document.querySelector("#statements-list");
 const statementModal = document.querySelector("#statement-modal");
@@ -18,6 +19,28 @@ const statementModalStatus = document.querySelector("#statement-modal-status");
 let pendingStatementId = null;
 
 let activeUserProfile = null;
+let authToken = localStorage.getItem("authToken") || null;
+
+function authHeaders() {
+  return authToken
+    ? { "Content-Type": "application/json", "Authorization": `Bearer ${authToken}` }
+    : { "Content-Type": "application/json" };
+}
+
+async function apiFetch(url, options = {}) {
+  const res = await fetch(url, {
+    ...options,
+    headers: { ...authHeaders(), ...(options.headers || {}) }
+  });
+  if (res.status === 401) {
+    authToken = null;
+    localStorage.removeItem("authToken");
+    localStorage.removeItem("activeUserProfileId");
+    openProfileModal();
+    throw new Error("Session expired. Please sign in again.");
+  }
+  return res;
+}
 
 // DOM Elements for user profiles
 const profileOverlay = document.querySelector("#profile-overlay");
@@ -170,7 +193,7 @@ function addCardRow(values = {}) {
     fetchStatus.textContent = "Fetching…";
 
     try {
-      const res = await fetch(`/api/cards/lookup?name=${encodeURIComponent(name)}&issuer=${encodeURIComponent(issuer || "")}`);
+      const res = await apiFetch(`/api/cards/lookup?name=${encodeURIComponent(name)}&issuer=${encodeURIComponent(issuer || "")}`);
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
 
@@ -403,6 +426,8 @@ function switchTab(tabName) {
   recommendPanel.hidden = tabName !== "recommend";
   statementsPanel.classList.toggle("is-active", tabName === "statements");
   statementsPanel.hidden = tabName !== "statements";
+  advicePanel.classList.toggle("is-active", tabName === "advice");
+  advicePanel.hidden = tabName !== "advice";
 
   if (tabName === "statements") loadPendingStatements();
 }
@@ -415,9 +440,8 @@ async function refreshPlan() {
     .map(row => row.dataset.id)
     .filter(id => id);
 
-  const response = await fetch("/api/cards/offers/refresh-plan", {
+  const response = await apiFetch("/api/cards/offers/refresh-plan", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(cardIds)
   });
 
@@ -434,9 +458,8 @@ async function getRecommendations(expense) {
   if (!activeUserProfile) return;
   setRecommendStatus("Comparing your cards...");
 
-  const response = await fetch("/api/recommendations/portfolio", {
+  const response = await apiFetch("/api/recommendations/portfolio", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       userProfileId: activeUserProfile.id,
       amount: expense.amount,
@@ -514,9 +537,9 @@ function showProfileWidget(profile) {
 async function loadProfileData() {
   cardList.innerHTML = "";
   setStatus("Loading cards...");
-  
+
   try {
-    const response = await fetch(`/api/cards?userProfileId=${activeUserProfile.id}`);
+    const response = await apiFetch(`/api/cards?userProfileId=${activeUserProfile.id}`);
     if (response.ok) {
       const cards = await response.json();
       if (cards.length > 0) {
@@ -532,7 +555,16 @@ async function loadProfileData() {
             accumulatedRewardPoints: card.accumulatedRewardPoints
           });
         });
-        
+
+        // Load portfolio summary for charts
+        try {
+          const summaryRes = await apiFetch(`/api/cards/portfolio/summary?userProfileId=${activeUserProfile.id}`);
+          if (summaryRes.ok) {
+            const summary = await summaryRes.json();
+            renderCharts(summary.cards || []);
+          }
+        } catch (_) {}
+
         await refreshPlan();
       } else {
         // No cards saved yet. Seed with default suggestions
@@ -584,13 +616,9 @@ document.querySelector("#cards-form").addEventListener("submit", async (event) =
   setStatus("Saving cards...");
 
   const cards = getCardsFromForm();
-  const response = await fetch("/api/cards/onboarding", {
+  const response = await apiFetch("/api/cards/onboarding", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ 
-      userProfileId: activeUserProfile.id,
-      cards 
-    })
+    body: JSON.stringify({ userProfileId: activeUserProfile.id, cards })
   });
 
   if (!response.ok) {
@@ -664,27 +692,36 @@ function switchLandingTab(tab) {
 loginTabBtn.addEventListener("click", () => switchLandingTab("login"));
 registerTabBtn.addEventListener("click", () => switchLandingTab("register"));
 
-// Email Lookup Login Handler
+// JWT Login Handler
 loginForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   const email = document.querySelector("#login-email").value.trim();
+  const password = document.querySelector("#login-password").value;
   profileError.style.display = "none";
   profileError.textContent = "";
 
   try {
-    const response = await fetch(`/api/users/email/${encodeURIComponent(email)}`);
+    const response = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password })
+    });
+
     if (!response.ok) {
-      profileError.textContent = "No profile found with this email. Go to the 'Create Profile' tab to sign up.";
+      profileError.textContent = await response.text() || "Sign in failed. Check your email and password.";
       profileError.style.display = "block";
       return;
     }
 
-    activeUserProfile = await response.json();
-    localStorage.setItem("activeUserProfileId", activeUserProfile.id);
+    const data = await response.json();
+    authToken = data.token;
+    localStorage.setItem("authToken", authToken);
+    activeUserProfile = { id: data.id, name: data.name, email: data.email };
+    localStorage.setItem("activeUserProfileId", data.id);
     profileOverlay.classList.remove("is-visible");
     showProfileWidget(activeUserProfile);
-    
     document.querySelector("#login-email").value = "";
+    document.querySelector("#login-password").value = "";
     await loadProfileData();
   } catch (err) {
     profileError.textContent = "Sign In failed: " + err.message;
@@ -692,36 +729,39 @@ loginForm.addEventListener("submit", async (e) => {
   }
 });
 
-// Create Profile Registration Handler
+// JWT Registration Handler
 registerForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   const name = document.querySelector("#register-name").value.trim();
   const email = document.querySelector("#register-email").value.trim();
+  const password = document.querySelector("#register-password").value;
   profileError.style.display = "none";
   profileError.textContent = "";
 
   try {
-    const response = await fetch("/api/users", {
+    const response = await fetch("/api/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email })
+      body: JSON.stringify({ name, email, password })
     });
 
     if (!response.ok) {
       const msg = await response.text();
-      profileError.textContent = msg || "Could not create user profile.";
+      profileError.textContent = msg || "Could not create account.";
       profileError.style.display = "block";
       return;
     }
 
-    activeUserProfile = await response.json();
-    localStorage.setItem("activeUserProfileId", activeUserProfile.id);
+    const data = await response.json();
+    authToken = data.token;
+    localStorage.setItem("authToken", authToken);
+    activeUserProfile = { id: data.id, name: data.name, email: data.email };
+    localStorage.setItem("activeUserProfileId", data.id);
     profileOverlay.classList.remove("is-visible");
     showProfileWidget(activeUserProfile);
-    
     document.querySelector("#register-name").value = "";
     document.querySelector("#register-email").value = "";
-    
+    document.querySelector("#register-password").value = "";
     await loadProfileData();
   } catch (err) {
     profileError.textContent = "Registration failed: " + err.message;
@@ -734,7 +774,7 @@ registerForm.addEventListener("submit", async (e) => {
 async function loadPendingStatements() {
   statementsStatus.textContent = "Loading…";
   try {
-    const res = await fetch("/api/statements/pending");
+    const res = await apiFetch("/api/statements/pending");
     const pending = await res.json();
     statementsStatus.textContent = "";
 
@@ -828,7 +868,7 @@ document.querySelector("#statement-upload").addEventListener("change", async (e)
   form.append("file", file);
 
   try {
-    const res = await fetch("/api/statements/upload", { method: "POST", body: form });
+    const res = await apiFetch("/api/statements/upload", { method: "POST", body: form, headers: { "Authorization": `Bearer ${authToken}` } });
     if (!res.ok) throw new Error(await res.text());
     statementsStatus.textContent = "Parsed. Check pending list below.";
     await loadPendingStatements();
@@ -847,7 +887,7 @@ statementConfirmBtn.addEventListener("click", async () => {
   statementModalStatus.textContent = "Importing…";
 
   try {
-    const res = await fetch(`/api/statements/${pendingStatementId}/confirm?cardId=${cardId}`, { method: "POST" });
+    const res = await apiFetch(`/api/statements/${pendingStatementId}/confirm?cardId=${cardId}`, { method: "POST" });
     if (!res.ok) throw new Error(await res.text());
     const result = await res.json();
     statementModal.hidden = true;
@@ -863,25 +903,117 @@ statementConfirmBtn.addEventListener("click", async () => {
 
 statementDismissBtn.addEventListener("click", async () => {
   if (!pendingStatementId) return;
-  await fetch(`/api/statements/${pendingStatementId}`, { method: "DELETE" });
+  await apiFetch(`/api/statements/${pendingStatementId}`, { method: "DELETE" });
   statementModal.hidden = true;
   await loadPendingStatements();
 });
 
+// ── Charts ───────────────────────────────────────────────────────────────────
+
+let spendChart = null;
+let rewardsChart = null;
+
+function renderCharts(cards) {
+  const labels = cards.map(c => c.name);
+  const spends = cards.map(c => c.currentYearSpend || 0);
+  const rewards = cards.map(c => c.currentYearRewards || 0);
+  const palette = ["#3b82f6", "#f59e0b", "#a855f7", "#22c55e", "#64748b",
+                   "#ef4444", "#06b6d4", "#f97316", "#14b8a6", "#8b5cf6"];
+
+  const spendCtx = document.querySelector("#spend-chart")?.getContext("2d");
+  const rewardsCtx = document.querySelector("#rewards-chart")?.getContext("2d");
+
+  if (!spendCtx || !rewardsCtx) return;
+
+  if (spendChart) spendChart.destroy();
+  if (rewardsChart) rewardsChart.destroy();
+
+  const sharedOptions = {
+    responsive: true,
+    plugins: { legend: { position: "bottom", labels: { color: "#cbd5e1", font: { size: 11 } } } }
+  };
+
+  spendChart = new Chart(spendCtx, {
+    type: "doughnut",
+    data: { labels, datasets: [{ data: spends, backgroundColor: palette, borderWidth: 0 }] },
+    options: sharedOptions
+  });
+
+  rewardsChart = new Chart(rewardsCtx, {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [{
+        data: rewards,
+        backgroundColor: palette,
+        borderRadius: 6
+      }]
+    },
+    options: {
+      ...sharedOptions,
+      scales: {
+        y: { ticks: { color: "#94a3b8", callback: v => "₹" + v.toLocaleString("en-IN") }, grid: { color: "#1e293b" } },
+        x: { ticks: { color: "#94a3b8" }, grid: { display: false } }
+      },
+      plugins: { legend: { display: false } }
+    }
+  });
+}
+
+// ── AI Advisor ────────────────────────────────────────────────────────────────
+
+document.querySelector("#advice-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!activeUserProfile) return;
+  const question = document.querySelector("#advice-question").value.trim();
+  if (!question) return;
+
+  const statusEl = document.querySelector("#advice-status");
+  const outputEl = document.querySelector("#advice-output");
+  statusEl.textContent = "Thinking…";
+  outputEl.textContent = "";
+  outputEl.className = "advice-output";
+
+  try {
+    const res = await apiFetch("/api/recommendations/advice", {
+      method: "POST",
+      body: JSON.stringify({ userProfileId: activeUserProfile.id, question })
+    });
+
+    if (!res.ok) throw new Error(await res.text());
+    const { advice } = await res.json();
+    outputEl.textContent = advice;
+    statusEl.textContent = "";
+  } catch (err) {
+    statusEl.textContent = "Error: " + err.message;
+  }
+});
+
+// ── Startup ───────────────────────────────────────────────────────────────────
+
 // Load Profile on startup
 document.addEventListener("DOMContentLoaded", async () => {
+  const savedToken = localStorage.getItem("authToken");
   const savedProfileId = localStorage.getItem("activeUserProfileId");
-  if (savedProfileId) {
+
+  if (savedToken && savedProfileId) {
+    authToken = savedToken;
     try {
-      activeUserProfile = await fetchProfile(savedProfileId);
-      showProfileWidget(activeUserProfile);
-      await loadProfileData();
+      // Validate token by making an authenticated request
+      const res = await apiFetch(`/api/users/${savedProfileId}`);
+      if (res.ok) {
+        activeUserProfile = await res.json();
+        showProfileWidget(activeUserProfile);
+        await loadProfileData();
+        return;
+      }
     } catch (e) {
-      console.error("Failed to load saved profile, opening login modal", e);
-      localStorage.removeItem("activeUserProfileId");
-      openProfileModal();
+      console.error("Saved session invalid:", e);
     }
-  } else {
-    openProfileModal();
+    authToken = null;
+    localStorage.removeItem("authToken");
+    localStorage.removeItem("activeUserProfileId");
   }
+
+  openProfileModal();
 });

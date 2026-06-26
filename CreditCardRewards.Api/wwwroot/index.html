@@ -4,7 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Credit Card Rewards Optimizer</title>
-  <link rel="stylesheet" href="/styles.css?v=1.0.5">
+  <link rel="stylesheet" href="/styles.css?v=2.0.0">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
   <main class="app-shell">
@@ -27,6 +28,7 @@
         <button type="button" class="tab-button is-active" data-tab="portfolio">My cards</button>
         <button type="button" class="tab-button" data-tab="recommend">Find best card</button>
         <button type="button" class="tab-button" data-tab="statements">Import statements</button>
+        <button type="button" class="tab-button" data-tab="advice">AI Advisor</button>
       </nav>
     </header>
 
@@ -52,6 +54,20 @@
             <button type="button" id="refresh-plan" class="secondary-button">Refresh plan</button>
           </div>
           <div id="plan-output" class="empty-state">Save your card list to see issuer, merchant, and reward-program searches tailored to your cards.</div>
+        </section>
+
+        <section class="results" aria-label="Portfolio analytics">
+          <div class="toolbar"><h2>Spend &amp; rewards analytics</h2></div>
+          <div class="charts-grid">
+            <div class="chart-box">
+              <h3>Annual spend by card</h3>
+              <canvas id="spend-chart"></canvas>
+            </div>
+            <div class="chart-box">
+              <h3>Rewards earned by card (₹)</h3>
+              <canvas id="rewards-chart"></canvas>
+            </div>
+          </div>
         </section>
       </div>
     </section>
@@ -203,6 +219,25 @@
     </div>
   </template>
 
+  <!-- AI Advisor Panel -->
+  <section id="advice-panel" class="panel" aria-label="AI Advisor" hidden>
+    <div class="workspace">
+      <div class="toolbar"><h2>AI Portfolio Advisor</h2></div>
+      <p class="form-hint">Ask anything about your credit card portfolio — best card for a merchant, how to hit a milestone, fee waiver strategy, etc.</p>
+      <form id="advice-form" class="setup-form">
+        <label>
+          <span>Your question</span>
+          <textarea id="advice-question" rows="3" placeholder="Which card should I use for all my Swiggy orders? How close am I to hitting my HDFC Infinia annual milestone?" maxlength="500"></textarea>
+        </label>
+        <div class="actions">
+          <button type="submit" class="primary-button">Ask AI</button>
+          <span id="advice-status" role="status" aria-live="polite"></span>
+        </div>
+      </form>
+      <div id="advice-output" class="empty-state advice-output">Your AI advisor's answer will appear here.</div>
+    </div>
+  </section>
+
   <!-- Statements Panel -->
   <section id="statements-panel" class="panel" aria-label="Import statements" hidden>
     <div class="workspace">
@@ -259,16 +294,20 @@
 
         <div id="profile-error" class="profile-error-message" style="display: none;"></div>
         
-        <!-- Sign In Form (Email Only) -->
+        <!-- Sign In Form -->
         <form id="login-form" class="profile-form">
           <div class="form-group">
             <label for="login-email">Email Address</label>
             <input type="email" id="login-email" placeholder="john@example.com" required maxlength="150">
           </div>
+          <div class="form-group">
+            <label for="login-password">Password</label>
+            <input type="password" id="login-password" placeholder="••••••••" required minlength="8">
+          </div>
           <button type="submit" class="primary-button full-width">Sign In</button>
         </form>
 
-        <!-- Create Profile Form (Name + Email) -->
+        <!-- Create Profile Form -->
         <form id="register-form" class="profile-form" hidden>
           <div class="form-group">
             <label for="register-name">Your Name</label>
@@ -277,6 +316,10 @@
           <div class="form-group">
             <label for="register-email">Email Address</label>
             <input type="email" id="register-email" placeholder="john@example.com" required maxlength="150">
+          </div>
+          <div class="form-group">
+            <label for="register-password">Password <span style="font-size:0.75rem;opacity:0.6">(min 8 characters)</span></label>
+            <input type="password" id="register-password" placeholder="••••••••" required minlength="8">
           </div>
           <button type="submit" class="primary-button full-width">Create Profile</button>
         </form>
@@ -290,6 +333,6 @@
     </div>
   </div>
 
-  <script src="/app.js?v=1.0.5"></script>
+  <script src="/app.js?v=2.0.0"></script>
 </body>
 </html>

@@ -45,12 +45,16 @@ namespace CreditCardRewards.Core.Services
             decimal rewardValueInRupees = 0;
             string reasoning = "";
 
-            // 1. Check for merchant-specific offers (highest priority)
-            var merchantOffer = card.Offers.FirstOrDefault(o =>
-                (string.IsNullOrEmpty(o.Merchant) || o.Merchant.Equals(request.Merchant, StringComparison.OrdinalIgnoreCase)) &&
-                o.ValidFrom <= DateTime.UtcNow && o.ValidUntil >= DateTime.UtcNow);
+            // 1. Check for merchant-specific offers (highest priority) — pick best value among active offers
+            var merchantOffer = card.Offers
+                .Where(o =>
+                    !string.IsNullOrEmpty(o.Merchant) &&
+                    o.Merchant.Equals(request.Merchant, StringComparison.OrdinalIgnoreCase) &&
+                    o.ValidFrom <= DateTime.UtcNow && o.ValidUntil >= DateTime.UtcNow)
+                .OrderByDescending(o => CalculateOfferReward(o, request.TransactionAmount))
+                .FirstOrDefault();
 
-            if (merchantOffer != null && !string.IsNullOrEmpty(merchantOffer.Merchant))
+            if (merchantOffer != null)
             {
                 rewardValueInRupees = CalculateOfferReward(merchantOffer, request.TransactionAmount);
                 reasoning = $"Merchant-specific offer: {merchantOffer.Title}";
@@ -130,7 +134,9 @@ namespace CreditCardRewards.Core.Services
 
             // Set result values
             result.EstimatedValue = rewardValueInRupees + result.MilestoneContributionValue + result.FeeWaiverContributionValue;
-            result.EffectiveReturnPercentage = (result.EstimatedValue / request.TransactionAmount) * 100;
+            result.EffectiveReturnPercentage = request.TransactionAmount > 0
+                ? (result.EstimatedValue / request.TransactionAmount) * 100
+                : 0;
             result.Reasoning = reasoning;
 
             return result;

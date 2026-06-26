@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using CreditCardRewards.Data.Context;
@@ -7,6 +8,7 @@ using CreditCardRewards.DataRefresh.Models;
 
 namespace CreditCardRewards.Api.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class StatementsController : ControllerBase
